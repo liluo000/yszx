@@ -1,0 +1,28 @@
+{
+  "name": "@yunshu/admin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "管理后台（Element Plus）",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "vue": "^3.5.45",
+    "vue-router": "^5.5.0",
+    "pinia": "^4.1.0",
+    "@yunshu/api": "workspace:*",
+    "@yunshu/shared": "workspace:*",
+    "element-plus": "^2.14.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.7",
+    "vue-tsc": "^3.3.14"
+  }
+}

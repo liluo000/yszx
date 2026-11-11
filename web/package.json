@@ -1,0 +1,30 @@
+{
+  "name": "yunshu-zhixue-web",
+  "private": true,
+  "type": "module",
+  "description": "云枢智学前端（pnpm 工作区）：学员端与管理后台",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev:student": "pnpm --filter @yunshu/student dev",
+    "dev:admin": "pnpm --filter @yunshu/admin dev",
+    "build": "pnpm -r --filter \"./apps/*\" build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.12.1",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.2",
+    "vue-eslint-parser": "^10.4.2"
+  }
+}

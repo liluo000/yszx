@@ -1,0 +1,48 @@
+:root {
+  /* 品牌色取自 LOGO，与原型 prototype/assets/css/tokens.css 一致 */
+  --color-board: #0a1c31;
+  --color-board-type: #f4f6f9;
+  --color-ink: #0a1c31;
+  --color-ink-2: oklch(32% 0.045 252);
+  --color-muted: oklch(47% 0.028 250);
+  --color-paper: oklch(97.6% 0.004 245);
+  --color-cotton: oklch(99.2% 0.002 245);
+  --color-rule: oklch(87.5% 0.011 245);
+  --color-accent: oklch(72% 0.105 190);
+  --color-accent-2: #00827f;
+
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --radius: 6px;
+  --side-width: 220px;
+  --bar-height: 56px;
+
+  /* Element Plus 主色改为 LOGO 青绿 */
+  --el-color-primary: #00827f;
+  --el-color-primary-light-3: #4da8a5;
+  --el-color-primary-light-5: #80c1bf;
+  --el-color-primary-light-7: #b3d9d9;
+  --el-color-primary-light-8: #cce6e5;
+  --el-color-primary-light-9: #e6f3f2;
+  --el-color-primary-dark-2: #006866;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--text-sm);
+  -webkit-font-smoothing: antialiased;
+}

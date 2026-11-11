@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>云枢智学页面原型</title>
+  <meta name="description" content="云枢智学可交互页面原型的入口：学员前台与管理后台，按需求文档章节索引。">
+  <link rel="icon" type="image/png" href="assets/img/favicon.png">
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css?v=11">
+  <link rel="stylesheet" href="assets/css/index.css?v=8">
+</head>
+<body>
+  <main class="idx">
+    <header class="idx-head">
+      <img class="idx-mark" src="assets/img/logo-mark.png" alt="云枢智学" width="276" height="183">
+      <div><h1>云枢智学页面原型</h1><p>依据 docs/需求文档.md 制作，只演示交互，不连接服务端，数据都是模拟数据。</p></div>
+    </header>
+
+    <div class="idx-grid">
+      <section class="card idx-entry" aria-labelledby="eStudent">
+        <h2 id="eStudent">学员前台</h2>
+        <p class="text-2">电脑和手机浏览器都能用。默认以已登录学员进入，左下角的原型控制台可以切换游客、调整剩余次数，模拟排队和 AI 服务异常。</p>
+        <a class="btn btn-primary" href="student.html">进入学员前台</a>
+        <table class="table">
+          <thead><tr><th>页面</th><th>需求章节</th></tr></thead>
+          <tbody>
+            <tr><td><a href="student.html#/">首页</a></td><td class="fig">5.2</td></tr>
+            <tr><td><a href="student.html#/routes">学习路线列表</a></td><td class="fig">5.3.1</td></tr>
+            <tr><td><a href="student.html#/route/2">路线详情与课程</a></td><td class="fig">5.3.2、5.3.3</td></tr>
+            <tr><td><a href="student.html#/search?q=Agent">搜索</a></td><td class="fig">5.3.4</td></tr>
+            <tr><td><a href="student.html#/practice/seq/1">按课程顺序练习</a></td><td class="fig">5.4.2</td></tr>
+            <tr><td><a href="student.html#/practice/random/202">按阶段随机抽题</a></td><td class="fig">5.4.3</td></tr>
+            <tr><td><a href="student.html#/route/1">模拟考试，在路线详情中开考</a></td><td class="fig">5.4.4</td></tr>
+            <tr><td><a href="student.html#/wrong">错题本</a></td><td class="fig">5.5</td></tr>
+            <tr><td><a href="student.html#/interview">发起 AI 面试</a></td><td class="fig">5.6.1</td></tr>
+            <tr><td><a href="student.html#/interviews">面试记录与面试报告</a></td><td class="fig">5.6.5、5.8</td></tr>
+            <tr><td><a href="student.html#/records">学习记录</a></td><td class="fig">5.7</td></tr>
+            <tr><td><a href="student.html#/profile?tab=security">个人中心，账号安全</a></td><td class="fig">5.1、5.9</td></tr>
+            <tr><td><a href="student.html#/messages">消息中心</a></td><td class="fig">5.10</td></tr>
+            <tr><td><a href="student.html#/help">帮助中心</a></td><td class="fig">5.11</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card idx-entry" aria-labelledby="eAdmin">
+        <h2 id="eAdmin">管理后台</h2>
+        <p class="text-2">先登录，演示账号 admin、content01、ops01，密码都是 123456。顶栏可以切换三种固定角色，菜单和权限跟着变化。</p>
+        <a class="btn btn-primary" href="admin.html">进入管理后台</a>
+        <table class="table">
+          <thead><tr><th>页面</th><th>需求章节</th></tr></thead>
+          <tbody>
+            <tr><td><a href="admin.html#/login">登录</a></td><td class="fig">6.9</td></tr>
+            <tr><td><a href="admin.html#/workbench">工作台</a></td><td class="fig">6.12</td></tr>
+            <tr><td><a href="admin.html#/subjects">学科管理</a></td><td class="fig">6.1</td></tr>
+            <tr><td><a href="admin.html#/courses">课程库</a></td><td class="fig">6.2</td></tr>
+            <tr><td><a href="admin.html#/routes">学习路线</a></td><td class="fig">6.3</td></tr>
+            <tr><td><a href="admin.html#/questions">刷题题库</a></td><td class="fig">6.4</td></tr>
+            <tr><td><a href="admin.html#/ivbank">面试题库</a></td><td class="fig">6.5</td></tr>
+            <tr><td><a href="admin.html#/feedback">纠错与反馈</a></td><td class="fig">6.6</td></tr>
+            <tr><td><a href="admin.html#/students">学员管理</a></td><td class="fig">6.7</td></tr>
+            <tr><td><a href="admin.html#/dashboard">数据看板</a></td><td class="fig">6.8</td></tr>
+            <tr><td><a href="admin.html#/sysusers">系统用户</a></td><td class="fig">6.9</td></tr>
+            <tr><td><a href="admin.html#/roles">角色管理</a></td><td class="fig">6.10</td></tr>
+            <tr><td><a href="admin.html#/logs">操作日志</a></td><td class="fig">6.11</td></tr>
+            <tr><td><a href="admin.html#/config">系统配置</a></td><td class="fig">第 7 章</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <section class="idx-flows" aria-labelledby="eFlows">
+      <h2 id="eFlows">建议体验的关键流程</h2>
+      <ol>
+        <li>游客浏览路线，点击课程时弹出登录，注册时勾选协议，再完善求职画像。</li>
+        <li>在路线详情里去练习，简答题由 AI 评分，正确率达到 80% 记为已掌握。答错的题进入错题本，重做答对后自动移出。</li>
+        <li>模拟考试：开考时预留评分次数，限时作答，交卷出成绩。在控制台打开 AI 服务异常，可以体验评分失败。</li>
+        <li>AI 面试：选路线、阶段和模式，语音面试先做设备检测，可以模拟失败和排队，面试后查看报告。</li>
+        <li>个人中心：设置密码时显示强度，换绑手机号，申请注销后有 7 天冷静期，登录时可以撤销。</li>
+        <li>管理后台：课程的删除和下架规则，路线阶段编排，学员导出上限 5000 条，查看完整手机号会留痕，系统配置。</li>
+      </ol>
+      <p class="small muted">直接双击打开 index.html 就能在浏览器里使用，不需要安装或启动服务。</p>
+    </section>
+  </main>
+</body>
+</html>

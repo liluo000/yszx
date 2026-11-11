@@ -1,0 +1,110 @@
+# 云枢智学 本地开发依赖服务
+# 包含：MySQL 8.4 LTS（只建空库，表由 Flyway 创建）、Redis 7.4、SeaweedFS（本地模拟对象存储，线上使用云对象存储）
+# 用法见同目录 README.md。账号密码在同目录 .env 中，模板为 .env.example。
+# 所有端口只绑定 127.0.0.1，局域网内其他设备无法访问。
+
+name: yunshu-dev
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: yunshu-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-yunshu_zhixue}
+      MYSQL_USER: ${MYSQL_USER:-yunshu}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+      TZ: UTC
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/conf.d:/etc/mysql/conf.d:ro
+      # 只建空库，表结构由后端启动时的 Flyway 迁移创建（server/src/main/resources/db/migration）
+    healthcheck:
+      # 初始化期间临时服务不监听 TCP，所以只有初始化完成、正式启动后才会变为健康
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: yunshu-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--appendonly", "yes"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.53
+    container_name: yunshu-seaweedfs
+    restart: unless-stopped
+    command: ["server", "-dir=/data", "-ip=seaweedfs", "-ip.bind=0.0.0.0", "-master.volumeSizeLimitMB=1024", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json"]
+    configs:
+      - source: seaweedfs_s3
+        target: /etc/seaweedfs/s3.json
+    ports:
+      - "127.0.0.1:${S3_PORT:-8333}:8333"
+      # 文件浏览网页界面，没有登录验证，所以只绑定本机
+      - "127.0.0.1:${FILER_PORT:-8888}:8888"
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status && wget -q -O /dev/null --header='Host: 127.0.0.1' http://127.0.0.1:8333/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  # 一次性任务：存储桶不存在时创建，完成后退出；可重复执行
+  seaweedfs-init:
+    image: chrislusf/seaweedfs:4.53
+    container_name: yunshu-seaweedfs-init
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        if echo "s3.bucket.list" | weed shell -master=seaweedfs:9333 | grep -qw "${S3_BUCKET:-yunshu-dev}";
+        then echo "bucket exists";
+        else echo "s3.bucket.create -name ${S3_BUCKET:-yunshu-dev}" | weed shell -master=seaweedfs:9333 && echo "bucket ready";
+        fi
+
+configs:
+  # anonymous：未带签名的请求只能读取文件（不能列目录、不能写），用于公开访问上传的图片
+  seaweedfs_s3:
+    content: |
+      {
+        "identities": [
+          {
+            "name": "yunshu-dev",
+            "credentials": [
+              { "accessKey": "${S3_ACCESS_KEY:?请在 .env 中设置 S3_ACCESS_KEY}", "secretKey": "${S3_SECRET_KEY:?请在 .env 中设置 S3_SECRET_KEY}" }
+            ],
+            "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+          },
+          {
+            "name": "anonymous",
+            "actions": ["Read:${S3_BUCKET:-yunshu-dev}"]
+          }
+        ]
+      }
+
+volumes:
+  mysql-data:
+  redis-data:
+  seaweedfs-data:
