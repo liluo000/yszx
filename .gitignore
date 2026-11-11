@@ -1,0 +1,8 @@
+deploy/dev/.env
+server/target/
+.DS_Store
+.run-logs/
+
+# 本机工具配置，不提交
+.claude/settings.local.json
+.hallmark/
