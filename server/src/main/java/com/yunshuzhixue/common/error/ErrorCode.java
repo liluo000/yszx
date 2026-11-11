@@ -23,6 +23,12 @@ public enum ErrorCode {
     SENSITIVE_WORD_EXISTS(HttpStatus.CONFLICT, "敏感词已存在"),
     PLATFORM_NAME_EXISTS(HttpStatus.CONFLICT, "平台名称已存在"),
     PLATFORM_DOMAIN_EXISTS(HttpStatus.CONFLICT, "域名已被其他平台使用"),
+    VIDEO_DOMAIN_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "视频链接域名不属于所选平台"),
+    COURSE_ALREADY_IN_ROUTE(HttpStatus.CONFLICT, "课程已被同一路线的其他阶段引用"),
+    ROUTE_PUBLISH_INVALID(HttpStatus.CONFLICT, "路线不满足上架条件"),
+    FEEDBACK_ALREADY_HANDLED(HttpStatus.CONFLICT, "反馈已被处理"),
+    SUBJECT_NAME_EXISTS(HttpStatus.CONFLICT, "学科名称已存在"),
+    CONTENT_IN_USE(HttpStatus.CONFLICT, "内容已被使用，不能删除"),
     FILE_INVALID(HttpStatus.BAD_REQUEST, "文件格式、大小或行数不符合要求"),
     EXPORT_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "导出数量超过上限，请缩小筛选范围"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "服务器内部错误");

@@ -1,4 +1,15 @@
-import { createAdminAuthApi, createAuditApi, createConfigApi, createHttpClient, createSysUserApi } from '@yunshu/api'
+import {
+  createAdminAuthApi,
+  createAuditApi,
+  createConfigApi,
+  createCourseApi,
+  createFeedbackApi,
+  createHttpClient,
+  createQuestionApi,
+  createRouteApi,
+  createSubjectApi,
+  createSysUserApi,
+} from '@yunshu/api'
 import { getToken } from '@/stores/token'
 
 let unauthorizedHandler: () => void = () => {}
@@ -19,3 +30,8 @@ export const authApi = createAdminAuthApi(http)
 export const sysUserApi = createSysUserApi(http)
 export const auditApi = createAuditApi(http)
 export const configApi = createConfigApi(http)
+export const subjectApi = createSubjectApi(http)
+export const courseApi = createCourseApi(http)
+export const routeApi = createRouteApi(http)
+export const questionApi = createQuestionApi(http)
+export const feedbackApi = createFeedbackApi(http)

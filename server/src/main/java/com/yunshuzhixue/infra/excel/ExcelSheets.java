@@ -35,6 +35,48 @@ public final class ExcelSheets {
     private ExcelSheets() {
     }
 
+    /** 带表头的表格：headers 为第 1 行各列文本，rows 为之后的非空行（列数与表头一致） */
+    public record Table(List<String> headers, List<SheetRow> rows) {
+    }
+
+    /** 读取第一个工作表：第 1 行为表头，按表头列数读取数据行，跳过空行 */
+    public static Table readTable(InputStream in) throws IOException {
+        DataFormatter formatter = new DataFormatter();
+        try (Workbook workbook = new XSSFWorkbook(in)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Row headerRow = sheet.getRow(sheet.getFirstRowNum());
+            List<String> headers = new ArrayList<>();
+            if (headerRow != null) {
+                for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+                    Cell cell = headerRow.getCell(i);
+                    headers.add(cell == null ? "" : formatter.formatCellValue(cell).trim());
+                }
+            }
+            List<SheetRow> rows = new ArrayList<>();
+            for (Row row : sheet) {
+                if (headerRow == null || row.getRowNum() <= headerRow.getRowNum()) {
+                    continue;
+                }
+                List<String> cells = new ArrayList<>();
+                boolean blank = true;
+                for (int i = 0; i < headers.size(); i++) {
+                    Cell cell = row.getCell(i);
+                    String text = cell == null ? "" : formatter.formatCellValue(cell).trim();
+                    blank &= text.isEmpty();
+                    cells.add(text);
+                }
+                if (blank) {
+                    continue;
+                }
+                if (rows.size() >= MAX_IMPORT_ROWS) {
+                    throw new TooManyRowsException();
+                }
+                rows.add(new SheetRow(row.getRowNum() + 1, cells));
+            }
+            return new Table(headers, rows);
+        }
+    }
+
     /** 读取第一个工作表的数据行，跳过第 1 行表头和空行 */
     public static List<SheetRow> readRows(InputStream in, int columns) throws IOException {
         DataFormatter formatter = new DataFormatter();

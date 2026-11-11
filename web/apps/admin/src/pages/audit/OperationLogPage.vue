@@ -8,7 +8,18 @@ import { ROLE_LABEL } from '@/constants/roles'
 import { errorText, formatDateTime, saveBlob } from '@/utils/format'
 
 /** 已记录日志的模块，新增业务模块时在此补充 */
-const MODULES = ['账号', '系统用户', '系统配置', '操作日志']
+const MODULES = [
+  '账号',
+  '学科管理',
+  '课程库',
+  '学习路线',
+  '刷题题库',
+  '面试题库',
+  '纠错与反馈',
+  '系统用户',
+  '系统配置',
+  '操作日志',
+]
 
 const filters = reactive<{ sysUserId?: number; module?: string; dates: [string, string] | null }>({ dates: null })
 const page = ref(1)

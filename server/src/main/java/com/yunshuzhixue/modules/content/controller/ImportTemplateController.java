@@ -3,6 +3,7 @@ package com.yunshuzhixue.modules.content.controller;
 import com.yunshuzhixue.common.error.BusinessException;
 import com.yunshuzhixue.common.error.ErrorCode;
 import com.yunshuzhixue.infra.excel.ExcelSheets;
+import com.yunshuzhixue.modules.content.service.CourseImportService;
 import com.yunshuzhixue.modules.iam.api.AdminAccess;
 import com.yunshuzhixue.modules.iam.api.AdminPermission;
 import java.nio.charset.StandardCharsets;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 下载导入模板（A-CNT-13）。目前只有敏感词模板（仅超级管理员）；课程和题目模板在开发对应功能时加入。
+ * 下载导入模板（A-CNT-13）：课程和敏感词模板（敏感词仅超级管理员）。题目模板由题库模块的 QuestionTemplateController 提供。
  */
 @RestController
 @RequestMapping("/api/v1/admin/import-templates")
@@ -34,15 +35,24 @@ public class ImportTemplateController {
 
     @GetMapping("/{templateType}")
     public ResponseEntity<byte[]> download(@PathVariable String templateType) {
-        if (!"sensitive_word".equals(templateType)) {
-            throw new BusinessException(ErrorCode.NOT_FOUND);
-        }
-        access.require(AdminPermission.CONFIG);
-        byte[] body = ExcelSheets.template("敏感词", List.of("敏感词"));
+        return switch (templateType) {
+            case "sensitive_word" -> {
+                access.require(AdminPermission.CONFIG);
+                yield file("敏感词导入模板.xlsx", ExcelSheets.template("敏感词", List.of("敏感词")));
+            }
+            case "course" -> {
+                access.require(AdminPermission.COURSE);
+                yield file("课程导入模板.xlsx", ExcelSheets.template("课程", CourseImportService.HEADERS));
+            }
+            default -> throw new BusinessException(ErrorCode.NOT_FOUND);
+        };
+    }
+
+    private static ResponseEntity<byte[]> file(String filename, byte[] body) {
         return ResponseEntity.ok()
                 .contentType(XLSX)
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                        .filename("敏感词导入模板.xlsx", StandardCharsets.UTF_8).build().toString())
+                        .filename(filename, StandardCharsets.UTF_8).build().toString())
                 .body(body);
     }
 }

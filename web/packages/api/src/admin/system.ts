@@ -23,6 +23,9 @@ export interface ImportResult {
 
 export type EnableStatus = 'enabled' | 'disabled'
 
+/** 导入模板类型（A-CNT-13） */
+export type ImportTemplateType = 'course' | 'practice_question' | 'interview_question' | 'sensitive_word'
+
 /* ---------------- 系统用户、角色（A-IAM-05~10） ---------------- */
 
 export interface SysUserQuery extends PageParams {
@@ -155,7 +158,7 @@ export function createConfigApi(http: HttpClient) {
     addSensitiveWord: (word: string) => http.post<{ id: number }>('/admin/sensitive-words', { word }),
     deleteSensitiveWord: (id: number) => http.delete<null>(`/admin/sensitive-words/${id}`),
     importSensitiveWords: (file: File) => http.upload<ImportResult>('/admin/sensitive-words/imports', file),
-    downloadTemplate: (type: 'sensitive_word') => http.download(`/admin/import-templates/${type}`),
+    downloadTemplate: (type: ImportTemplateType) => http.download(`/admin/import-templates/${type}`),
 
     videoPlatforms: () => http.get<{ items: VideoPlatformView[] }>('/admin/video-platforms'),
     createVideoPlatform: (body: { name: string; domains: string[] }) =>

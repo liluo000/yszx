@@ -214,7 +214,6 @@ CREATE TABLE subject (
 
 CREATE TABLE course (
   id                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
-  subject_id         BIGINT UNSIGNED NOT NULL COMMENT '所属学科，一门课程只属于一个学科',
   title              VARCHAR(100)  NOT NULL COMMENT '课程名称',
   video_platform_id  BIGINT UNSIGNED NOT NULL COMMENT '视频平台',
   video_url          VARCHAR(1000) NOT NULL COMMENT '视频链接，域名须属于所选平台',
@@ -225,11 +224,21 @@ CREATE TABLE course (
   created_at         DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   updated_at         DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
   PRIMARY KEY (id),
-  KEY idx_course_subject_status (subject_id, status, sort_no),
   KEY idx_course_status_sort (status, sort_no),
   KEY idx_course_platform (video_platform_id),
   CONSTRAINT chk_course_status CHECK (status IN ('on_shelf', 'off_shelf'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='课程';
+
+CREATE TABLE course_subject (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  course_id   BIGINT UNSIGNED NOT NULL COMMENT '课程',
+  subject_id  BIGINT UNSIGNED NOT NULL COMMENT '学科',
+  sort_no     INT          NOT NULL COMMENT '课程内学科的展示顺序，越小越靠前',
+  created_at  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_course_subject (course_id, subject_id),
+  KEY idx_course_subject_subject (subject_id, course_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='课程所属的学科，一门课程至少属于一个学科';
 
 CREATE TABLE learning_route (
   id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -278,7 +287,7 @@ CREATE TABLE practice_question (
   options           JSON        NULL COMMENT '选项列表，单选和多选使用，2 到 8 个',
   correct_answer    JSON        NULL COMMENT '正确答案，判断、单选、多选使用',
   reference_answer  TEXT        NULL COMMENT '参考答案，简答题使用',
-  scoring_points    TEXT        NULL COMMENT '评分要点，简答题使用',
+  scoring_points    TEXT        NULL COMMENT '评分要点，简答题选填；为空时 AI 评分只对照参考答案',
   analysis          TEXT        NULL COMMENT '解析',
   sort_no           INT         NOT NULL COMMENT '排序号，用于顺序练习',
   status            VARCHAR(20) NOT NULL COMMENT '状态：on_shelf 上架、off_shelf 下架',
@@ -290,7 +299,7 @@ CREATE TABLE practice_question (
   CONSTRAINT chk_practice_question_type CHECK (question_type IN ('true_false', 'single_choice', 'multiple_choice', 'short_answer')),
   CONSTRAINT chk_practice_question_status CHECK (status IN ('on_shelf', 'off_shelf')),
   CONSTRAINT chk_practice_question_objective CHECK (question_type = 'short_answer' OR correct_answer IS NOT NULL),
-  CONSTRAINT chk_practice_question_short CHECK (question_type <> 'short_answer' OR (reference_answer IS NOT NULL AND scoring_points IS NOT NULL)),
+  CONSTRAINT chk_practice_question_short CHECK (question_type <> 'short_answer' OR reference_answer IS NOT NULL),
   CONSTRAINT chk_practice_question_options CHECK (question_type NOT IN ('single_choice', 'multiple_choice') OR JSON_LENGTH(options) BETWEEN 2 AND 8)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='刷题题目';
 
@@ -299,7 +308,7 @@ CREATE TABLE interview_question (
   course_id           BIGINT UNSIGNED NOT NULL COMMENT '所属课程',
   stem                TEXT        NOT NULL COMMENT '题干',
   reference_answer    TEXT        NOT NULL COMMENT '参考答案',
-  scoring_points      TEXT        NOT NULL COMMENT '评分要点',
+  scoring_points      TEXT        NULL COMMENT '评分要点，选填；为空时 AI 评分只对照参考答案',
   followup_direction  TEXT        NULL COMMENT '追问方向',
   status              VARCHAR(20) NOT NULL COMMENT '状态：on_shelf 上架、off_shelf 下架',
   created_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',

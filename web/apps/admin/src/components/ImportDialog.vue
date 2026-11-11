@@ -2,7 +2,7 @@
 // 通用批量导入弹窗：下载模板、选择 xlsx、查看导入结果（04.API接口设计.md ImportResult）
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { ImportResult } from '@yunshu/api'
+import type { ImportResult, ImportTemplateType } from '@yunshu/api'
 import { configApi } from '@/api'
 import { errorText, saveBlob } from '@/utils/format'
 
@@ -11,7 +11,7 @@ const MAX_BYTES = 5 * 1024 * 1024
 const visible = defineModel<boolean>({ required: true })
 const props = defineProps<{
   title: string
-  templateType: 'sensitive_word'
+  templateType: ImportTemplateType
   templateName: string
   rules: string[]
   upload: (file: File) => Promise<ImportResult>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { menuGroups } from './menu'
 import { useAuthStore } from '@/stores/auth'
 import logoUrl from '@/assets/logo-reversed.png'
@@ -8,6 +9,9 @@ defineProps<{ open: boolean }>()
 defineEmits<{ toggle: [] }>()
 
 const auth = useAuthStore()
+const route = useRoute()
+// 子页面（如 /routes/12 编排页）也高亮所属菜单
+const isSubPage = (path: string) => route.path.startsWith(`${path}/`)
 // 只显示当前账号有权限的菜单，整组都没有权限时隐藏分组
 const visibleGroups = computed(() =>
   menuGroups
@@ -36,7 +40,13 @@ const visibleGroups = computed(() =>
     <nav class="menu" aria-label="后台菜单">
       <template v-for="group in visibleGroups" :key="group.title || 'default'">
         <div v-if="group.title" class="menu-group">{{ group.title }}</div>
-        <RouterLink v-for="item in group.items" :key="item.path" :to="item.path" class="menu-item">
+        <RouterLink
+          v-for="item in group.items"
+          :key="item.path"
+          :to="item.path"
+          class="menu-item"
+          :class="{ 'router-link-active': isSubPage(item.path) }"
+        >
           {{ item.title }}
         </RouterLink>
       </template>

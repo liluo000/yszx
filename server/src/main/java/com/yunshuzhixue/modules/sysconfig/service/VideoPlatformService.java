@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.yunshuzhixue.common.error.BusinessException;
 import com.yunshuzhixue.common.error.ErrorCode;
 import com.yunshuzhixue.modules.iam.api.CurrentAdmin;
+import com.yunshuzhixue.modules.sysconfig.api.VideoPlatformCatalog;
 import com.yunshuzhixue.modules.sysconfig.entity.VideoPlatform;
 import com.yunshuzhixue.modules.sysconfig.entity.VideoPlatformDomain;
 import com.yunshuzhixue.modules.sysconfig.mapper.VideoPlatformDomainMapper;
@@ -12,13 +13,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 视频平台（需求 7.8，A-CFG-09~12）。停用后不能用于新建课程，已有课程不受影响；平台不删除 */
 @Service
-public class VideoPlatformService {
+public class VideoPlatformService implements VideoPlatformCatalog {
 
     public record PlatformItem(VideoPlatform platform, List<String> domains) {
     }
@@ -41,6 +43,17 @@ public class VideoPlatformService {
                         Collectors.mapping(VideoPlatformDomain::getDomain, Collectors.toList())));
         return platformMapper.selectList(new LambdaQueryWrapper<VideoPlatform>().orderByAsc(VideoPlatform::getId))
                 .stream().map(p -> new PlatformItem(p, domains.getOrDefault(p.getId(), List.of()))).toList();
+    }
+
+    @Override
+    public Optional<PlatformInfo> find(Long id) {
+        return all().stream().filter(p -> p.id().equals(id)).findFirst();
+    }
+
+    @Override
+    public List<PlatformInfo> all() {
+        return list().stream().map(item -> new PlatformInfo(item.platform().getId(), item.platform().getName(),
+                "enabled".equals(item.platform().getStatus()), item.domains())).toList();
     }
 
     @Transactional

@@ -24,7 +24,14 @@ const router = createRouter({
       path: '/',
       component: AdminLayout,
       redirect: '/workbench',
-      children: pageRoutes,
+      children: [
+        ...pageRoutes,
+        {
+          path: 'routes/:id(\\d+)',
+          component: () => import('@/pages/content/RouteEditPage.vue'),
+          meta: { title: '编排路线', permission: 'route' },
+        },
+      ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/workbench' },
   ],
