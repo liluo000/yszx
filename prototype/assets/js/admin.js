@@ -45,9 +45,9 @@
     if (path === '/login') { app.innerHTML = '<div id="view"></div>'; return $('#view'); }
     app.innerHTML = `
       <aside class="a-side" id="aSide"><div class="a-brand"><span class="brand-lockup"><img src="assets/img/logo-reversed.png?v=2" alt="云枢智学" width="836" height="183"><span>管理后台</span></span><button type="button" class="menu-toggle" id="menuToggle" aria-label="打开菜单" aria-expanded="false">${U.icon('menu')}</button></div>
-        <nav class="a-menu" aria-label="后台菜单">${MENU.map((g) => { const its = g.items.filter((i) => i[3].includes(A.role)); return its.length ? `${g.group ? `<div class="a-group">${g.group}</div>` : ''}${its.map((i) => `<a href="#${i[0]}" class="${path.startsWith(i[0]) ? 'active' : ''}" ${path.startsWith(i[0]) ? 'aria-current="page"' : ''}>${i[1]}${i[0] === '/feedback' && pending() ? `<span class="count" aria-label="${pending()} 条待处理">${pending()}</span>` : ''}</a>`).join('')}` : ''; }).join('')}</nav></aside>
+        <nav class="a-menu" aria-label="后台菜单">${MENU.map((g) => { const its = g.items.filter((i) => i[3].includes(A.role)); return its.length ? `${g.group ? `<div class="a-group">${g.group}</div>` : ''}${its.map((i) => `<a href="#${i[0]}" class="${path.startsWith(i[0]) ? 'active' : ''}" ${path.startsWith(i[0]) ? 'aria-current="page"' : ''}>${i[1]}${i[0] === '/feedback' && pending() ? `<span class="dot" role="img" aria-label="有 ${pending()} 条待处理"></span>` : ''}</a>`).join('')}` : ''; }).join('')}</nav></aside>
       <div class="a-main"><header class="a-top"><span class="crumb">${titleOf(path)}</span>
-        <div class="right"><label class="role-switch"><span>演示角色</span><select class="select" id="roleSel">${Object.entries(DB.roleNames).map(([k, v]) => `<option value="${k}" ${k === A.role ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+        <div class="right"><label class="role-switch" aria-label="当前角色"><select class="select" id="roleSel">${Object.entries(DB.roleNames).map(([k, v]) => `<option value="${k}" ${k === A.role ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
           <span class="small text-2">${esc(me().name)}</span><a href="student.html" target="_blank" rel="noopener" class="small">打开学员端</a><button type="button" class="btn btn-sm" id="logout">退出</button></div></header>
         <main class="a-content" id="view"></main></div>`;
     $('#roleSel').onchange = (e) => { A.role = e.target.value; toast('已切换为' + DB.roleNames[A.role]); go(allowed(path) ? path : '/workbench'); };
@@ -55,19 +55,20 @@
     $('#menuToggle').onclick = (e) => { const open = $('#aSide').classList.toggle('open'); e.currentTarget.setAttribute('aria-expanded', open); };
     return $('#view');
   }
-  const refTag = (t) => `<span class="proto-ref">需求 ${t}</span>`;
+  // 正式开发阶段不在页面上展示需求编号标注
+  const refTag = () => '';
 
   /* ---------------- 登录（需求 6.9） ---------------- */
   function pageLogin(el) {
     el.innerHTML = `<div class="login-wrap">
       <section class="login-side"><img class="login-logo" src="assets/img/logo-reversed.png?v=2" alt="云枢智学" width="836" height="183">
-        <div><h1>管理后台</h1><p>维护学习路线、课程和题库，处理学员反馈，查看学习与面试数据。</p></div><p class="small">页面原型，数据为模拟数据</p></section>
+        <div><h1>管理后台</h1><p>维护学习路线、课程和题库，处理学员反馈，查看学习与面试数据。</p></div></section>
       <main class="login-main"><div class="login-card"><h2>登录</h2><p class="muted mt-4 mb-16">使用后台账号和密码登录</p>
       <div class="form-item"><label for="acc">账号</label><input class="input" id="acc" name="username" autocomplete="username" value="admin"></div>
       <div class="form-item"><label for="pwd">密码</label><input class="input" id="pwd" name="password" type="password" autocomplete="current-password" value="123456"></div>
       <div class="form-error mb-8" id="err" role="alert"></div>
       <button type="button" class="btn btn-primary btn-block btn-lg" id="go">登录</button>
-      <div class="panel small text-2"><p>演示账号的密码都是 123456。</p><dl class="detail-dl"><div><dt>admin</dt><dd>超级管理员</dd></div><div><dt>content01</dt><dd>内容运营</dd></div><div><dt>ops01</dt><dd>学员运营</dd></div><div><dt>content02</dt><dd>已停用</dd></div></dl><p class="mt-12 muted">密码连续输错 5 次锁定 15 分钟，8 小时无操作自动退出。</p></div></div></main></div>`;
+      <div class="panel small text-2"><p class="mt-12 muted">密码连续输错 5 次锁定 15 分钟，8 小时无操作自动退出。</p></div></div></main></div>`;
     const submit = () => {
       const acc = $('#acc').value.trim(), pwd = $('#pwd').value;
       const u = DB.sysUsers.find((x) => x.account === acc);
@@ -97,7 +98,6 @@
     const tiles = A.role === 'content' ? content : A.role === 'student' ? student : [...content, ...student];
     el.innerHTML = `<div class="a-title"><div><h2>工作台</h2><p>你好，${esc(me().name)}。这里是你的待办和今天的数据，点击进入处理。</p></div>${refTag('6.12 工作台')}</div>
       <div class="kpis">${tiles.map((t) => `<button type="button" class="kpi" data-go="${t[3]}"><div class="label">${t[0]}</div><div class="value">${t[1].toLocaleString()}<span class="small muted"> ${t[2]}</span></div></button>`).join('')}</div>
-      ${A.role !== 'content' ? '<p class="sample-note mt-8">学员数据为原型示例数据。</p>' : ''}
       ${A.role !== 'student' ? `<section class="card mt-24" aria-labelledby="wbFb"><div class="card-head"><h3 id="wbFb">最新待处理反馈</h3><a href="#/feedback">查看全部</a></div>${table([['类型', (f) => (f.type === 'video' ? '<span class="tag tag-orange">视频失效</span>' : '<span class="tag tag-primary">题目纠错</span>')], ['对象', (f) => esc(f.target)], ['提交次数', (f) => `<span class="fig">${f.count}</span>`], ['时间', (f) => `<span class="fig">${f.time}</span>`]], DB.feedback.filter((f) => f.status === 'pending').slice(0, 4), '没有待处理的反馈')}</section>` : ''}`;
     $$('[data-go]', el).forEach((k) => (k.onclick = () => go(k.dataset.go)));
   }
@@ -130,12 +130,12 @@
       $('.modal-body', r).innerHTML = '<div class="row"><span class="spinner"></span>正在导入…</div>';
       setTimeout(() => {
         $('.modal-body', r).innerHTML = `<div class="alert alert-success">导入完成：成功 <b>18</b> 条，失败 <b>2</b> 条</div>
-          <div class="mt-12">${table([['行号', (x) => x[0]], ['失败原因', (x) => x[1]]], [[5, '必填字段为空：' + fields[0]], [12, fields[1]]])}</div><button type="button" class="btn btn-sm mt-8" onclick="U.toast('原型：下载失败明细')">下载失败明细</button>`;
+          <div class="mt-12">${table([['行号', (x) => x[0]], ['失败原因', (x) => x[1]]], [[5, '必填字段为空：' + fields[0]], [12, fields[1]]])}</div><button type="button" class="btn btn-sm mt-8" onclick="U.toast('下载失败明细')">下载失败明细</button>`;
         $('.modal-foot', r).innerHTML = '<button type="button" class="btn btn-primary" id="ok">完成</button>';
         $('#ok', r).onclick = () => { c(); onDone && onDone(18); };
       }, 1000);
     } }] });
-    $('.modal-body', m.root).innerHTML = `<ol class="text-2" style="padding-left:var(--space-md);margin-top:0"><li>下载导入模板：<a onclick="U.toast('原型：下载 ${tpl}')">${tpl}</a></li><li>按模板填写后上传（.xlsx）</li></ol>
+    $('.modal-body', m.root).innerHTML = `<ol class="text-2" style="padding-left:var(--space-md);margin-top:0"><li>下载导入模板：<a onclick="U.toast('下载 ${tpl}')">${tpl}</a></li><li>按模板填写后上传（.xlsx）</li></ol>
       <button type="button" class="upload mt-12" id="up">点击选择文件，或把文件拖到这里</button>`;
     $('#up', m.root).onclick = () => { picked = true; $('#up', m.root).textContent = '已选择 导入数据.xlsx，共 20 行'; $('#up', m.root).style.borderStyle = 'solid'; };
   }
@@ -256,7 +256,7 @@
         <select class="select" data-f="course"><option value="">全部课程</option>${DB.courses.filter((c) => !f.subject || c.subjectId === +f.subject).map((c) => `<option value="${c.id}" ${+f.course === c.id ? 'selected' : ''}>${c.title}</option>`).join('')}</select>
         <select class="select" data-f="type"><option value="">全部题型</option>${Object.entries(typeName).map(([k, v]) => `<option value="${k}" ${f.type === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
         <select class="select" data-f="status"><option value="">全部状态</option><option value="on" ${f.status === 'on' ? 'selected' : ''}>已上架</option><option value="off" ${f.status === 'off' ? 'selected' : ''}>已下架</option></select>
-        <span class="small muted">共 ${total} 道${total > 40 ? '（原型仅展示前 40 道）' : ''}</span></div>
+        <span class="small muted">共 ${total} 道${total > 40 ? '（仅展示前 40 道）' : ''}</span></div>
       ${table([['题干', (x) => `<div style="max-width:420px">${esc(x.stem)}</div>`], ['题型', (x) => `<span class="tag tag-primary">${typeName[x.type]}</span>`], ['所属课程', (x) => esc(course(x.courseId).title)], ['排序', (x) => x.sort], ['作答记录', (x) => (x.answered ? '有' : '<span class="muted">无</span>')], ['状态', (x) => statusTag(x.status)],
         ['操作', (x) => `<button type="button" class="btn-link" data-ed="${x.id}">编辑</button><button type="button" class="btn-link" data-tg="${x.id}">${x.status === 'on' ? '下架' : '上架'}</button><button type="button" class="btn-link danger" data-del="${x.id}">删除</button>`, 'ops']], rows)}`;
     const apply = (k, v) => { const nq = { ...f, [k]: v }; if (k === 'subject') nq.course = ''; go('/questions?' + new URLSearchParams(Object.entries(nq).filter(([, x]) => x)).toString()); };
@@ -407,7 +407,7 @@
           <div class="tabs mt-24">${[['learn', '学习记录'], ['practice', '刷题记录'], ['iv', '面试记录']].map(([k, t]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="tab ${tab === k ? 'active' : ''}" data-t="${k}">${t}</button>`).join('')}</div>
           ${tab === 'learn' ? table([['课程', (x) => x[0]], ['状态', (x) => x[1]], ['最近打开', (x) => x[2]]], [['Python 基础语法', '<span class="tag tag-green">已掌握</span>', '2026-11-02 20:11'], ['大模型基础与 Prompt 工程', '<span class="tag tag-primary">已学</span>', '2026-11-07 20:05'], ['RAG 检索增强生成', '<span class="tag">未学</span>', '2026-11-07 21:30']])
           : tab === 'practice' ? table([['练习', (x) => x[0]], ['成绩', (x) => x[1]], ['时间', (x) => x[2]]], [['Python 基础语法，顺序练习', '7 / 8', '2026-11-02 20:40'], ['Agent 开发，阶段二，模拟考试', '78 分', '2026-11-07 21:52']])
-          : table([['时间', (x) => x[0]], ['路线', (x) => x[1]], ['模式', (x) => x[2]], ['总分', (x) => x[3]], ['', () => '<a class="btn-link" onclick="U.toast(\'原型：查看该学员的面试报告\')">查看报告</a>', 'ops']], [['2026-11-06 21:05', 'Agent 开发', '文字', '76，良好'], ['2026-11-04 20:30', 'AI 全栈开发', '语音', '64，良好']])}`;
+          : table([['时间', (x) => x[0]], ['路线', (x) => x[1]], ['模式', (x) => x[2]], ['总分', (x) => x[3]], ['', () => '<a class="btn-link" onclick="U.toast(\'查看该学员的面试报告\')">查看报告</a>', 'ops']], [['2026-11-06 21:05', 'Agent 开发', '文字', '76，良好'], ['2026-11-04 20:30', 'AI 全栈开发', '语音', '64，良好']])}`;
         if ($('#show', m.root)) $('#show', m.root).onclick = () => { shown = true; addLog('学员管理', '查看完整手机号', `学员 ${s.nickname}（${s.id}）`); toast('已显示完整手机号，本次查看已记入操作日志'); draw(); };
         $$('[data-t]', m.root).forEach((t) => (t.onclick = () => { tab = t.dataset.t; draw(); }));
       };
@@ -422,7 +422,7 @@
     const labels = Array.from({ length: days }, (_, i) => (range === 'month' ? `${6 + i} 月` : range === 'week' ? `第 ${33 + i} 周` : `11-${U.pad(i + 1)}`).replace('11-1', '11-1'));
     const seed = (base, amp) => labels.map((_, i) => Math.round(base + amp * Math.sin(i / 1.7) + i * (base / 40)));
     const reg = seed({ day: 70, week: 480, month: 1900, custom: 70 }[range], { day: 18, week: 90, month: 300, custom: 18 }[range]);
-    el.innerHTML = `<div class="a-title"><div><h2>数据看板</h2><p>数据更新于今天 14:00，按北京时间统计。当天数据每小时更新，留存率和完成率每天凌晨汇总前一天。以下为原型示例数据。</p></div>
+    el.innerHTML = `<div class="a-title"><div><h2>数据看板</h2><p>数据更新于今天 14:00，按北京时间统计。当天数据每小时更新，留存率和完成率每天凌晨汇总前一天。</p></div>
         <div class="row">${refTag('6.8 数据看板')}<button type="button" class="btn" id="exp">导出 Excel</button></div></div>
       <div class="filter-bar"><div class="seg" role="radiogroup" aria-label="时间粒度">${[['day', '按日'], ['week', '按周'], ['month', '按月'], ['custom', '自定义']].map(([k, t]) => `<button type="button" role="radio" aria-checked="${range === k}" class="seg-item ${range === k ? 'active' : ''}" data-r="${k}">${t}</button>`).join('')}</div>${range === 'custom' ? '<input class="input" type="date" aria-label="开始日期" value="2026-10-30"><span class="muted">至</span><input class="input" type="date" aria-label="结束日期" value="2026-11-08">' : ''}</div>
       <h3 class="mt-16 mb-12">获客与活跃</h3>
@@ -502,7 +502,7 @@
       `<div class="cfg-row"><div><b>面试等级分数线</b><div class="small muted">优秀 / 良好 / 待提升三档</div></div><div class="col"><div class="row wrap">优秀 ≥ <input class="input" type="number" value="${CFG.grade.excellent}" style="width:80px"> 分，良好 ≥ <input class="input" type="number" value="${CFG.grade.good}" style="width:80px"> 分，其余为待提升</div></div></div>`;
     if (tab === 'agree') body = `<div class="form-item"><label>用户协议</label><textarea class="textarea" style="min-height:160px">${esc(DB.agreement.user)}</textarea></div><div class="form-item"><label>隐私政策</label><textarea class="textarea" style="min-height:160px">${esc(DB.agreement.privacy)}</textarea></div><div class="alert alert-warn small">发布更新后：未登录学员在下次登录时勾选同意；已登录学员在下次打开页面时弹窗要求同意，不同意则退出登录；同时发送"协议已更新"站内信。</div>`;
     if (tab === 'words') body = `<p class="small muted mb-12">用于过滤 AI 面试与简答题评分中学员的输入和 AI 的输出。学员输入命中：拦截并提示修改，不消耗次数；AI 输出命中：替换为 *；命中情况均写入日志。</p><div class="row mb-16"><input class="input" id="nw" placeholder="输入敏感词" style="max-width:240px"><button type="button" class="btn" id="addW">添加</button><button type="button" class="btn" id="impW">批量导入</button></div><div id="words">${DB.sensitiveWords.map((w, i) => `<span class="word-tag">${esc(w)}<button data-rw="${i}">×</button></span>`).join('')}</div>`;
-    if (tab === 'help') body = `<h4 class="mb-12">常见问题</h4>${DB.faq.map((f, i) => `<div class="faq-row"><div class="row-between"><b>${esc(f.q)}</b><span class="row" style="gap:var(--space-sm)"><button type="button" class="btn-link" onclick="U.toast('原型：编辑常见问题')">编辑</button><button type="button" class="btn-link" ${i === 0 ? 'disabled' : ''}>上移</button><button type="button" class="btn-link danger" onclick="U.toast('原型：删除常见问题')">删除</button></span></div><p class="text-2 mt-4">${esc(f.a)}</p></div>`).join('')}<button type="button" class="btn btn-sm mt-12" onclick="U.toast('原型：新增常见问题')">新增问题</button>
+    if (tab === 'help') body = `<h4 class="mb-12">常见问题</h4>${DB.faq.map((f, i) => `<div class="faq-row"><div class="row-between"><b>${esc(f.q)}</b><span class="row" style="gap:var(--space-sm)"><button type="button" class="btn-link" onclick="U.toast('编辑常见问题')">编辑</button><button type="button" class="btn-link" ${i === 0 ? 'disabled' : ''}>上移</button><button type="button" class="btn-link danger" onclick="U.toast('删除常见问题')">删除</button></span></div><p class="text-2 mt-4">${esc(f.a)}</p></div>`).join('')}<button type="button" class="btn btn-sm mt-12" onclick="U.toast('新增常见问题')">新增问题</button>
       <h4 class="mt-24 mb-12">客服联系方式（均为选填）</h4><div class="grid grid-3"><div class="form-item"><label>客服微信二维码</label><button type="button" class="upload" onclick="this.textContent='已上传 qrcode.png'">上传图片</button></div><div class="form-item"><label>邮箱</label><input class="input" value="${DB.contact.email}"></div><div class="form-item"><label>电话</label><input class="input" value="${DB.contact.phone}"></div></div><p class="small muted">联系方式在帮助中心、封禁提示、语音面试设备检测失败等处统一引用。</p>`;
     if (tab === 'platform') body = `<div class="row-between mb-12"><p class="small muted">新增平台只需在此配置，不需要修改代码；停用的平台不能用于新建课程，已有课程不受影响。</p><button type="button" class="btn btn-sm btn-primary" id="addP">+ 新增平台</button></div>
       ${table([['平台名称', (p) => `<b>${esc(p.name)}</b>${p.builtin ? ' <span class="tag">内置</span>' : ''}`], ['允许的域名', (p) => p.domains.map((d) => `<span class="tag">${d}</span>`).join(' ')], ['课程数', (p) => DB.courses.filter((c) => c.platformId === p.id).length], ['状态', (p) => (p.enabled ? '<span class="tag tag-green">启用</span>' : '<span class="tag">停用</span>')], ['操作', (p) => `<button type="button" class="btn-link" data-pe="${p.id}">编辑</button><button type="button" class="btn-link" data-pt="${p.id}">${p.enabled ? '停用' : '启用'}</button>`, 'ops']], DB.platforms)}`;

@@ -93,7 +93,7 @@
             </div></div>` : `<button class="btn btn-ghost btn-sm" id="loginBtn" type="button">登录</button><button class="btn btn-primary btn-sm" id="regBtn" type="button">注册</button>`}
         </div></div></header>
       <main class="s-main" id="view"></main>
-      <footer class="s-footer"><div class="s-footer-inner"><span>云枢智学</span><a href="#/help">帮助中心</a><a id="ftUser" tabindex="0">用户协议</a><a id="ftPrivacy" tabindex="0">隐私政策</a><span class="grow"></span><span>页面原型，仅演示交互，数据为模拟数据</span></div></footer>`;
+      <footer class="s-footer"><div class="s-footer-inner"><span>云枢智学</span><a href="#/help">帮助中心</a><a id="ftUser" tabindex="0">用户协议</a><a id="ftPrivacy" tabindex="0">隐私政策</a><span class="grow"></span></div></footer>`;
     $('#menuBtn').onclick = (e) => { const open = $('#sNav').classList.toggle('open'); e.currentTarget.setAttribute('aria-expanded', open); };
     $('#topSearch').onkeydown = (e) => { if (e.key === 'Enter' && e.target.value.trim()) go('/search?q=' + encodeURIComponent(e.target.value.trim())); };
     if (S.loggedIn) {
@@ -120,15 +120,14 @@
     fab.className = 'btn proto-fab';
     fab.type = 'button';
     fab.setAttribute('aria-expanded', panelOpen);
-    fab.textContent = panelOpen ? '收起原型控制台' : '原型控制台';
+    fab.textContent = panelOpen ? '收起控制台' : '控制台';
     fab.onclick = () => { panelOpen = !panelOpen; renderProtoPanel(); };
     document.body.appendChild(fab);
     if (!panelOpen) return;
     const p = document.createElement('div');
     p.className = 'proto-panel';
     const sw = (key, on) => `<button type="button" class="switch ${on ? 'on' : ''}" role="switch" aria-checked="${on}" data-k="${key}" aria-label="切换"></button>`;
-    p.innerHTML = `<h4>原型控制台</h4>
-      ${S.docRef ? `<div class="proto-ref">本页对应需求：${S.docRef}</div>` : ''}
+    p.innerHTML = `<h4>控制台</h4>
       <div class="item"><span>登录状态（学员 / 游客）</span>${sw('login', S.loggedIn)}</div>
       <div class="item"><span>今日 AI 面试剩余 <b class="fig">${S.interviewLeft}</b> 次</span><span class="row"><button type="button" class="btn btn-sm" data-a="iv0">设为 0</button><button type="button" class="btn btn-sm" data-a="ivr">重置</button></span></div>
       <div class="item"><span>今日 AI 评分剩余 <b class="fig">${S.scoreLeft}</b> 次</span><span class="row"><button type="button" class="btn btn-sm" data-a="sc0">设为 0</button><button type="button" class="btn btn-sm" data-a="scr">重置</button></span></div>
@@ -137,7 +136,7 @@
       <div class="item"><span>模拟报告生成失败</span>${sw('reportFail', S.demo.reportFail)}</div>
       <div class="item"><span>模拟账号被封禁（登录时）</span>${sw('banned', S.demo.banned)}</div>
       <div class="item"><span>弹出协议更新提示</span><button type="button" class="btn btn-sm" data-a="agree">触发</button></div>
-      <div class="item"><span>管理后台原型</span><a href="admin.html" target="_blank" rel="noopener">在新窗口打开</a></div>`;
+      <div class="item"><span>管理后台</span><a href="admin.html" target="_blank" rel="noopener">在新窗口打开</a></div>`;
     document.body.appendChild(p);
     $$('.switch', p).forEach((b) => (b.onclick = () => {
       const k = b.dataset.k;
@@ -178,10 +177,10 @@
         ${isReg ? '' : `<div class="tabs" role="tablist"><button type="button" role="tab" class="tab btn-link" style="text-decoration:none" aria-selected="${st.mode === 'code'}" data-m="code">验证码登录</button><button type="button" role="tab" class="tab btn-link" style="text-decoration:none" aria-selected="${st.mode === 'pwd'}" data-m="pwd">密码登录</button></div>`}
         <div class="form-item"><label for="lgPhone">手机号</label><input class="input fig" id="lgPhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="请输入 11 位手机号" value="${S.user.phone}"></div>
         ${st.mode === 'pwd' ? `
-          <div class="form-item"><label for="lgPwd">密码</label><input class="input" id="lgPwd" name="password" type="password" autocomplete="current-password" placeholder="请输入密码"><div class="form-hint">原型演示密码 abc123，需先在个人中心设置过密码。</div></div>` : `
+          <div class="form-item"><label for="lgPwd">密码</label><input class="input" id="lgPwd" name="password" type="password" autocomplete="current-password" placeholder="请输入密码"><div class="form-hint">需先在个人中心设置过密码。</div></div>` : `
           <div class="form-item"><label>图形验证</label><button type="button" class="captcha ${st.captcha ? 'ok' : ''}" id="cap" aria-pressed="${st.captcha}"><span class="box" aria-hidden="true">${st.captcha ? '对' : ''}</span>${st.captcha ? '验证通过' : '点击完成图形验证'}</button></div>
           <div class="form-item"><label for="lgCode">短信验证码</label><div class="input-group"><input class="input fig" id="lgCode" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 位验证码"><button type="button" class="btn" id="sendCode" ${st.countdown ? 'disabled' : ''}>${st.countdown ? st.countdown + ' 秒后重发' : st.codeSent ? '重新获取' : '获取验证码'}</button></div>
-          <div class="form-hint">原型演示验证码为 123456。验证码 5 分钟内有效，输错 5 次即失效。</div></div>`}
+          <div class="form-hint">验证码 5 分钟内有效，输错 5 次即失效。</div></div>`}
         ${isReg ? `<label class="check mb-16"><input type="checkbox" id="agree"> 我已阅读并同意 <a id="aU">《用户协议》</a> 和 <a id="aP">《隐私政策》</a></label>` : ''}
         <div id="lgErr" class="form-error mb-8"></div>
         <button type="button" class="btn btn-primary btn-block btn-lg" id="lgSubmit">${isReg ? '注册' : '登录'}</button>
@@ -195,7 +194,7 @@
       if ($('#sendCode', body)) $('#sendCode', body).onclick = () => {
         if (!phoneOk()) return;
         if (!st.captcha) return err('请先完成图形验证');
-        st.codeSent = true; st.wrong = 0; st.countdown = 60; toast('验证码已发送（演示：123456）', 'success');
+        st.codeSent = true; st.wrong = 0; st.countdown = 60; toast('验证码已发送', 'success');
         clearInterval(st.timer);
         st.timer = setInterval(() => { st.countdown--; const b = $('#sendCode', body); if (b) { b.textContent = st.countdown > 0 ? st.countdown + ' 秒后重发' : '重新获取'; b.disabled = st.countdown > 0; } if (st.countdown <= 0) clearInterval(st.timer); }, 1000);
         draw();
@@ -252,7 +251,7 @@
   function resetPwdModal() {
     modal({ title: '忘记密码', width: 420, body: `
       <div class="form-item"><label>手机号</label><input class="input" value="${S.user.phone}"></div>
-      <div class="form-item"><label>短信验证码</label><div class="input-group"><input class="input" placeholder="演示：123456" id="rpCode"><button type="button" class="btn" onclick="this.disabled=true;this.textContent='60 秒后重发'">获取验证码</button></div></div>
+      <div class="form-item"><label>短信验证码</label><div class="input-group"><input class="input" placeholder="请输入验证码" id="rpCode"><button type="button" class="btn" onclick="this.disabled=true;this.textContent='60 秒后重发'">获取验证码</button></div></div>
       <div class="form-item"><label>新密码</label><input class="input" type="password" id="rpPwd" placeholder="6~20 位"><div id="rpBar" class="mt-4"></div></div>`,
       onMount: (root) => { $('#rpPwd', root).oninput = (e) => ($('#rpBar', root).innerHTML = U.strengthBar(e.target.value)); },
       footer: [{ text: '取消' }, { text: '重置密码', type: 'primary', onClick: (c, root) => {
@@ -399,7 +398,7 @@
     S.progress[cid].opened = U.now();
     S.last = { routeId: r.id, courseId: cid };
     const mobile = window.innerWidth < 640;
-    toast(mobile && co.platformId === 1 ? '正在唤起 B 站 App（未安装将打开网页）…' : `已在新窗口打开「${platform(co.platformId).name}」观看（原型不实际跳转）`);
+    toast(mobile && co.platformId === 1 ? '正在唤起 B 站 App（未安装将打开网页）…' : `已在新窗口打开「${platform(co.platformId).name}」观看`);
   }
   function videoFeedback(cid) {
     const co = course(cid);
@@ -704,7 +703,7 @@
         <h2 class="mt-24 mb-8">逐题解析</h2>${R.items.map((it, i) => `<div class="result"><div class="row-between"><b>${i + 1}. ${esc(it.q.stem)}</b>${it.pending ? '<span class="tag tag-orange">评分中</span>' : it.ok ? '<span class="tag tag-green">正确</span>' : '<span class="tag tag-red">错误</span>'}</div>
           <dl><dt>你的答案</dt><dd>${esc(answerText(it.q, it.a))}</dd>${it.q.type !== 'short' ? `<dt>正确答案</dt><dd>${correctText(it.q)}</dd>` : ''}${it.ai ? `<dt>AI 评分</dt><dd><span class="fig">${it.ai.score}</span> 分，${it.ai.comment} <span class="tag tag-ai">AI 生成</span></dd>` : ''}<dt>解析</dt><dd>${esc(it.q.analysis)}</dd></dl>
           <button type="button" class="btn btn-ghost btn-sm mt-8" data-cor="${it.q.id}">${icon('flag')}题目纠错</button></div>`).join('')}</div></div>`;
-    if ($('#rescore')) $('#rescore').onclick = () => { if (S.demo.aiFail) return toast('评分服务仍不可用，请稍后再试（可在原型控制台关闭"模拟 AI 服务异常"）', 'error'); scoreExamShort(); toast('简答题评分完成', 'success'); rerender(); };
+    if ($('#rescore')) $('#rescore').onclick = () => { if (S.demo.aiFail) return toast('评分服务仍不可用，请稍后再试', 'error'); scoreExamShort(); toast('简答题评分完成', 'success'); rerender(); };
     $$('[data-cor]', el).forEach((a) => (a.onclick = () => correctionModal(DB.questions.find((q) => q.id === +a.dataset.cor))));
   }
 
@@ -957,7 +956,7 @@
         return;
       }
       base = ta.value;
-      if (!SR) return simulate('当前浏览器不支持语音识别，原型用示例文字演示');
+      if (!SR) return simulate('当前浏览器不支持语音识别，已改用文字回答');
       rec = new SR();
       rec.lang = 'zh-CN';
       rec.continuous = true;
@@ -976,10 +975,10 @@
         if (e.error === 'no-speech') return paint(false, '没有听到声音，可以再试一次');
         if (e.error === 'aborted') return paint(false);
         if (e.error === 'not-allowed' && location.protocol !== 'file:') return paint(false, '无法使用麦克风，请在浏览器里允许麦克风权限，也可以直接打字');
-        simulate(e.error === 'not-allowed' ? '本地文件打开时浏览器不允许使用麦克风，原型用示例文字演示' : '语音识别服务暂不可用，原型用示例文字演示');
+        simulate(e.error === 'not-allowed' ? '本地文件打开时浏览器不允许使用麦克风，已改用文字回答' : '语音识别服务暂不可用，已改用文字回答');
       };
       rec.onend = () => finish(doneMsg());
-      try { rec.start(); paint(true, '正在听，说完点结束'); } catch (err) { release(); simulate('语音识别服务暂不可用，原型用示例文字演示'); }
+      try { rec.start(); paint(true, '正在听，说完点结束'); } catch (err) { release(); simulate('语音识别服务暂不可用，已改用文字回答'); }
     };
     S.stopDictation = stop;
     return { stop };
@@ -1040,7 +1039,7 @@
         <div class="transcript" id="trBox"><span class="muted small">你的回答会实时转成文字显示在这里</span></div>
         <div class="small muted" id="hint"></div></div>
       <div class="voice-ctrl" id="vCtrl"></div></div>
-      <p class="small muted mt-8 center">原型没有接真实麦克风，用"模拟开口回答"演示识别。开口后停顿 ${CFG.pauseSeconds} 秒判定说完，15 秒不开口会提醒。</p>`;
+      <p class="small muted mt-8 center">开口后停顿 ${CFG.pauseSeconds} 秒判定说完，15 秒不开口会提醒。</p>`;
     bindIvCommon(iv);
     let silence = null, pauseT = null, streamT = null, sayT = null;
     const clearLocal = () => [silence, pauseT, streamT, sayT].forEach((t) => { clearTimeout(t); clearInterval(t); });
@@ -1176,7 +1175,7 @@
     S.docRef = { info: '5.9 个人中心', portrait: '5.9 求职画像', security: '5.1.3 密码，5.1.4 换绑，5.1.5 注销', agreement: '5.9 协议查看' }[tab];
     const nav = [['info', '个人资料'], ['portrait', '求职画像'], ['security', '账号安全'], ['agreement', '协议查看']];
     let body = '';
-    if (tab === 'info') body = `<h2 class="mb-16">个人资料</h2><div class="row mb-16" style="gap:var(--space-md)"><div class="avatar" style="width:64px;height:64px;font-size:var(--text-xl)" aria-hidden="true">${esc(S.user.nickname.slice(0, 1))}</div><button type="button" class="btn btn-sm" onclick="U.toast('原型：上传头像')">更换头像</button></div><div class="form-item" style="max-width:360px"><label for="nick">昵称</label><input class="input" id="nick" name="nickname" autocomplete="nickname" value="${esc(S.user.nickname)}"></div><button type="button" class="btn btn-primary" id="saveInfo">保存</button>`;
+    if (tab === 'info') body = `<h2 class="mb-16">个人资料</h2><div class="row mb-16" style="gap:var(--space-md)"><div class="avatar" style="width:64px;height:64px;font-size:var(--text-xl)" aria-hidden="true">${esc(S.user.nickname.slice(0, 1))}</div><button type="button" class="btn btn-sm" onclick="U.toast('上传头像')">更换头像</button></div><div class="form-item" style="max-width:360px"><label for="nick">昵称</label><input class="input" id="nick" name="nickname" autocomplete="nickname" value="${esc(S.user.nickname)}"></div><button type="button" class="btn btn-primary" id="saveInfo">保存</button>`;
     if (tab === 'portrait') body = `<h2>求职画像</h2><p class="small muted mt-4 mb-16">都是选填，求职意向从学习路线方向中选择。</p><div style="max-width:360px">${portraitForm()}</div><button type="button" class="btn btn-primary" id="savePf">保存</button>`;
     if (tab === 'security') body = `<h2 class="mb-8">账号安全</h2>
       <div class="kv"><div><h4>登录密码</h4><p class="small muted">${S.user.hasPassword ? '已设置，可以用手机号加密码登录' : '未设置。设置后可以用手机号加密码登录'}</p></div><button type="button" class="btn" id="pwdBtn">${S.user.hasPassword ? '修改密码' : '设置密码'}</button></div>
@@ -1221,10 +1220,10 @@
     const draw = () => {
       const root = m.root;
       $('.modal-body', root).innerHTML = `<div class="seg mb-16" role="radiogroup" aria-label="验证方式"><button type="button" role="radio" aria-checked="${way === 'sms'}" class="seg-item ${way === 'sms' ? 'active' : ''}" data-w="sms">原手机号验证</button><button type="button" role="radio" aria-checked="${way === 'pwd'}" class="seg-item ${way === 'pwd' ? 'active' : ''}" data-w="pwd">原手机号收不到验证码</button></div>
-        ${way === 'sms' ? `<div class="form-item"><label for="oc">原手机号 <span class="fig">${U.maskPhone(S.user.phone)}</span> 的验证码</label><div class="input-group"><input class="input fig" id="oc" inputmode="numeric" autocomplete="one-time-code" placeholder="演示验证码 123456">${smsBtn}</div></div>`
+        ${way === 'sms' ? `<div class="form-item"><label for="oc">原手机号 <span class="fig">${U.maskPhone(S.user.phone)}</span> 的验证码</label><div class="input-group"><input class="input fig" id="oc" inputmode="numeric" autocomplete="one-time-code" placeholder="请输入验证码">${smsBtn}</div></div>`
         : S.user.hasPassword ? '<div class="form-item"><label for="op">登录密码，代替原手机号验证</label><input class="input" type="password" id="op" autocomplete="current-password"></div>' : '<div class="alert alert-warn mb-16">你还没有设置登录密码。请先在账号安全里设置密码，再用密码验证换绑。</div><input type="hidden" id="op">'}
         <div class="form-item"><label for="np">新手机号</label><input class="input fig" id="np" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="不能是已注册的手机号"></div>
-        <div class="form-item"><label for="nc">新手机号验证码</label><div class="input-group"><input class="input fig" id="nc" inputmode="numeric" autocomplete="one-time-code" placeholder="演示验证码 123456">${smsBtn}</div></div>
+        <div class="form-item"><label for="nc">新手机号验证码</label><div class="input-group"><input class="input fig" id="nc" inputmode="numeric" autocomplete="one-time-code" placeholder="请输入验证码">${smsBtn}</div></div>
         <p class="small muted">换绑成功后，这个账号在所有设备上退出登录。</p>`;
       $$('[data-w]', root).forEach((s) => (s.onclick = () => { way = s.dataset.w; draw(); }));
     };
@@ -1234,7 +1233,7 @@
     modal({ title: '申请注销账号', width: 460, body: `
       <div class="alert alert-error">注销生效后，学习、刷题、面试记录<b>全部删除，无法恢复</b>。</div>
       <ul class="text-2 mt-12" style="padding-left:var(--space-md)"><li>申请后进入 7 天冷静期，账号显示为注销中，并退出登录</li><li>冷静期内登录，可以选择撤销注销</li><li>到期后自动删除个人数据，这个手机号可以重新注册</li></ul>
-      <div class="form-item mt-16"><label for="cc">短信验证码，发送到 <span class="fig">${U.maskPhone(S.user.phone)}</span></label><div class="input-group"><input class="input fig" id="cc" inputmode="numeric" autocomplete="one-time-code" placeholder="演示验证码 123456">${smsBtn}</div></div>
+      <div class="form-item mt-16"><label for="cc">短信验证码，发送到 <span class="fig">${U.maskPhone(S.user.phone)}</span></label><div class="input-group"><input class="input fig" id="cc" inputmode="numeric" autocomplete="one-time-code" placeholder="请输入验证码">${smsBtn}</div></div>
       <label class="check"><input type="checkbox" id="ck"> 我已了解注销后果，确认注销</label>`,
       footer: [{ text: '取消' }, { text: '确认注销', type: 'danger-solid', onClick: (c, root) => {
         if ($('#cc', root).value !== '123456') return toast('验证码错误', 'error');
