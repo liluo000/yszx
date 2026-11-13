@@ -11,6 +11,7 @@ import {
   createStudentApi,
   createSubjectApi,
   createSysUserApi,
+  createWorkbenchApi,
 } from '@yunshu/api'
 import { getToken } from '@/stores/token'
 
@@ -39,3 +40,4 @@ export const questionApi = createQuestionApi(http)
 export const feedbackApi = createFeedbackApi(http)
 export const studentApi = createStudentApi(http)
 export const dashboardApi = createDashboardApi(http)
+export const workbenchApi = createWorkbenchApi(http)
