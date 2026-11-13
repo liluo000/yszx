@@ -3,10 +3,12 @@ import {
   createAuditApi,
   createConfigApi,
   createCourseApi,
+  createDashboardApi,
   createFeedbackApi,
   createHttpClient,
   createQuestionApi,
   createRouteApi,
+  createStudentApi,
   createSubjectApi,
   createSysUserApi,
 } from '@yunshu/api'
@@ -35,3 +37,5 @@ export const courseApi = createCourseApi(http)
 export const routeApi = createRouteApi(http)
 export const questionApi = createQuestionApi(http)
 export const feedbackApi = createFeedbackApi(http)
+export const studentApi = createStudentApi(http)
+export const dashboardApi = createDashboardApi(http)

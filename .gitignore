@@ -6,3 +6,4 @@ server/target/
 # 本机工具配置，不提交
 .claude/settings.local.json
 .hallmark/
+.workbuddy/memory/

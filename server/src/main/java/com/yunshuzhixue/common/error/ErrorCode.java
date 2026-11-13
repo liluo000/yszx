@@ -27,6 +27,7 @@ public enum ErrorCode {
     COURSE_ALREADY_IN_ROUTE(HttpStatus.CONFLICT, "课程已被同一路线的其他阶段引用"),
     ROUTE_PUBLISH_INVALID(HttpStatus.CONFLICT, "路线不满足上架条件"),
     FEEDBACK_ALREADY_HANDLED(HttpStatus.CONFLICT, "反馈已被处理"),
+    STUDENT_STATE_INVALID(HttpStatus.CONFLICT, "学员当前状态不允许此操作"),
     SUBJECT_NAME_EXISTS(HttpStatus.CONFLICT, "学科名称已存在"),
     CONTENT_IN_USE(HttpStatus.CONFLICT, "内容已被使用，不能删除"),
     FILE_INVALID(HttpStatus.BAD_REQUEST, "文件格式、大小或行数不符合要求"),

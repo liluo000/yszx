@@ -10,6 +10,8 @@ public final class AuditModules {
     public static final String PRACTICE_QUESTION = "刷题题库";
     public static final String INTERVIEW_QUESTION = "面试题库";
     public static final String FEEDBACK = "纠错与反馈";
+    public static final String STUDENT = "学员管理";
+    public static final String DASHBOARD = "数据看板";
     public static final String SYS_USER = "系统用户";
     public static final String SYS_CONFIG = "系统配置";
     public static final String OPERATION_LOG = "操作日志";

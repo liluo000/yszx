@@ -112,6 +112,41 @@ public final class ExcelSheets {
         return write(sheetName, headers, List.of());
     }
 
+    /** 一个工作表的内容 */
+    public record SheetData(String name, List<String> headers, List<List<String>> rows) {
+    }
+
+    /** 生成包含多个工作表的导出文件 */
+    public static byte[] writeSheets(List<SheetData> sheets) {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            CellStyle style = workbook.createCellStyle();
+            Font font = workbook.createFont();
+            font.setBold(true);
+            style.setFont(font);
+            for (SheetData data : sheets) {
+                Sheet sheet = workbook.createSheet(data.name());
+                Row header = sheet.createRow(0);
+                for (int i = 0; i < data.headers().size(); i++) {
+                    Cell cell = header.createCell(i);
+                    cell.setCellValue(data.headers().get(i));
+                    cell.setCellStyle(style);
+                    sheet.setColumnWidth(i, 22 * 256);
+                }
+                for (int r = 0; r < data.rows().size(); r++) {
+                    Row row = sheet.createRow(r + 1);
+                    List<String> values = data.rows().get(r);
+                    for (int i = 0; i < values.size(); i++) {
+                        row.createCell(i).setCellValue(values.get(i) == null ? "" : values.get(i));
+                    }
+                }
+            }
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("生成 Excel 失败", e);
+        }
+    }
+
     /** 生成导出文件：第 1 行为表头，之后每行为一条数据 */
     public static byte[] write(String sheetName, List<String> headers, List<List<String>> rows) {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
