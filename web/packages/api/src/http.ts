@@ -91,8 +91,15 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
           new ApiError(body.code, body.message, error.response.status, body.errors ?? [], body.request_id),
         )
       }
+      // 没有响应体时区分三种情况，避免「服务没启动」被笼统报成网络异常
       const status = error.response?.status ?? 0
-      return Promise.reject(new ApiError('NETWORK_ERROR', '网络异常，请稍后重试', status))
+      const message =
+        status !== 0
+          ? '网络异常，请稍后重试'
+          : error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT'
+            ? '请求超时，请稍后重试'
+            : '无法连接服务器，请检查网络或确认后端服务已启动'
+      return Promise.reject(new ApiError('NETWORK_ERROR', message, status))
     },
   )
 

@@ -32,6 +32,22 @@ public enum ErrorCode {
     CONTENT_IN_USE(HttpStatus.CONFLICT, "内容已被使用，不能删除"),
     FILE_INVALID(HttpStatus.BAD_REQUEST, "文件格式、大小或行数不符合要求"),
     EXPORT_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "导出数量超过上限，请缩小筛选范围"),
+    // 学员账号（需求 5.1，S-ACC-01~13）
+    CAPTCHA_INVALID(HttpStatus.BAD_REQUEST, "图形验证不正确或已失效"),
+    SMS_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "验证码发送过于频繁，请稍后再试"),
+    SMS_CODE_INVALID(HttpStatus.BAD_REQUEST, "短信验证码不正确或已失效"),
+    PHONE_ALREADY_REGISTERED(HttpStatus.CONFLICT, "该手机号已注册"),
+    AGREEMENT_VERSION_OUTDATED(HttpStatus.CONFLICT, "协议版本已更新，请重新阅读并同意"),
+    PASSWORD_NOT_SET(HttpStatus.BAD_REQUEST, "尚未设置登录密码"),
+    ACCOUNT_BANNED(HttpStatus.FORBIDDEN, "账号已被封禁"),
+    STUDENT_CANCELLING(HttpStatus.CONFLICT, "账号处于注销中状态"),
+    // AI 次数与练习（需求 5.4，S-QTA-01、S-PRC-01~05）
+    AI_QUOTA_EXHAUSTED(HttpStatus.CONFLICT, "当日 AI 次数已用完"),
+    CONTENT_OFF_SHELF(HttpStatus.CONFLICT, "内容已下架"),
+    INSUFFICIENT_QUESTIONS(HttpStatus.CONFLICT, "题目建设中，题量不足"),
+    SESSION_NOT_IN_PROGRESS(HttpStatus.CONFLICT, "该练习场次已结束"),
+    QUESTION_NOT_IN_SESSION(HttpStatus.BAD_REQUEST, "该题目不属于本场次"),
+    QUESTION_ALREADY_ANSWERED(HttpStatus.CONFLICT, "该题已作答"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "服务器内部错误");
 
     private final HttpStatus status;

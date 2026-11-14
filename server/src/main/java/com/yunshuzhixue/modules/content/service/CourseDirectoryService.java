@@ -4,9 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.yunshuzhixue.modules.content.api.CourseDirectory;
 import com.yunshuzhixue.modules.content.entity.Course;
 import com.yunshuzhixue.modules.content.entity.CourseSubject;
+import com.yunshuzhixue.modules.content.entity.Subject;
 import com.yunshuzhixue.modules.content.mapper.CourseMapper;
 import com.yunshuzhixue.modules.content.mapper.CourseSubjectMapper;
+import com.yunshuzhixue.modules.content.mapper.SubjectMapper;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,10 +23,13 @@ public class CourseDirectoryService implements CourseDirectory {
 
     private final CourseMapper courseMapper;
     private final CourseSubjectMapper courseSubjectMapper;
+    private final SubjectMapper subjectMapper;
 
-    public CourseDirectoryService(CourseMapper courseMapper, CourseSubjectMapper courseSubjectMapper) {
+    public CourseDirectoryService(CourseMapper courseMapper, CourseSubjectMapper courseSubjectMapper,
+                                  SubjectMapper subjectMapper) {
         this.courseMapper = courseMapper;
         this.courseSubjectMapper = courseSubjectMapper;
+        this.subjectMapper = subjectMapper;
     }
 
     @Override
@@ -32,6 +39,32 @@ public class CourseDirectoryService implements CourseDirectory {
         }
         return courseMapper.selectByIds(courseIds).stream().map(CourseDirectoryService::ref)
                 .collect(Collectors.toMap(CourseRef::id, Function.identity()));
+    }
+
+    @Override
+    public Map<Long, List<SubjectRef>> subjectsOf(Collection<Long> courseIds) {
+        if (courseIds.isEmpty()) {
+            return Map.of();
+        }
+        List<CourseSubject> links = courseSubjectMapper.selectList(new LambdaQueryWrapper<CourseSubject>()
+                .in(CourseSubject::getCourseId, courseIds)
+                .orderByAsc(CourseSubject::getCourseId, CourseSubject::getSortNo));
+        if (links.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> subjectIds = links.stream().map(CourseSubject::getSubjectId).collect(Collectors.toSet());
+        Map<Long, String> names = subjectMapper.selectByIds(subjectIds).stream()
+                .collect(Collectors.toMap(Subject::getId, Subject::getName));
+        Map<Long, List<SubjectRef>> result = new LinkedHashMap<>();
+        for (CourseSubject link : links) {
+            String name = names.get(link.getSubjectId());
+            if (name == null) {
+                continue;
+            }
+            result.computeIfAbsent(link.getCourseId(), key -> new ArrayList<>())
+                    .add(new SubjectRef(link.getSubjectId(), name));
+        }
+        return result;
     }
 
     @Override

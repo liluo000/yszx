@@ -1,0 +1,84 @@
+/*
+ * 设计令牌：由原型 prototype/assets/css/tokens.css 提炼，学员端与管理端共用。
+ * 品牌色取自 LOGO：navy #0a1c31、teal #00827f。
+ */
+:root {
+  color-scheme: light;
+
+  /* 间距 */
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+
+  /* 字号 */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.2rem;
+  --text-xl: 1.44rem;
+  --text-2xl: 1.728rem;
+  --text-3xl: 2.074rem;
+
+  /* 动效 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  /* 颜色 */
+  --color-paper: oklch(97.6% 0.004 245);
+  --color-paper-2: oklch(95% 0.006 245);
+  --color-paper-3: oklch(91.5% 0.01 245);
+  --color-ink: #0a1c31;
+  --color-ink-2: oklch(32% 0.045 252);
+  --color-muted: oklch(47% 0.028 250);
+  --color-rule: oklch(87.5% 0.011 245);
+  --color-rule-2: oklch(81% 0.015 245);
+  --color-accent: oklch(72% 0.105 190);
+  --color-accent-2: #00827f;
+  --color-focus: #00827f;
+  --color-cotton: oklch(99.2% 0.002 245);
+  --color-board: #0a1c31;
+  --color-board-type: #f4f6f9;
+  --color-error: oklch(52% 0.19 27);
+  --color-error-wash: oklch(95.5% 0.025 27);
+  --color-success: oklch(50% 0.12 150);
+  --color-success-wash: oklch(95.5% 0.025 150);
+  --color-warn: oklch(50% 0.11 68);
+  --color-warn-wash: oklch(95.5% 0.03 75);
+  --color-accent-wash: oklch(95.5% 0.022 190);
+
+  /* 字体 */
+  --font-display: "General Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-display);
+  --font-outlier: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* 形状与阴影 */
+  --radius-card: 8px;
+  --radius-input: 6px;
+  --radius-pill: 999px;
+  --rule-hair: 1px;
+  --shadow-card: 0 1px 2px oklch(20% 0.03 250 / 0.05);
+  --cast-stock: 6px 5px 10px -6px oklch(32% 0.04 250 / 0.3);
+  --cast-stock-lift: 12px 10px 18px -8px oklch(32% 0.04 250 / 0.3);
+  --shadow-pop: 0 12px 32px -12px oklch(32% 0.04 250 / 0.35), 0 0 0 0.5px oklch(32% 0.04 250 / 0.22);
+
+  /* 层级与尺寸 */
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sticky-nav: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --control-h: 36px;
+  --control-h-sm: 32px;
+  --bar-h: 56px;
+  --content-w: 1200px;
+}
