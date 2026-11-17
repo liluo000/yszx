@@ -36,8 +36,10 @@ watch(page, load)
 <template>
   <section class="page">
     <div class="page-head">
-      <h1>学习路线</h1>
-      <p>共 {{ total }} 条已上架路线，按阶段循序渐进</p>
+      <div>
+        <h1>学习路线</h1>
+        <p>共 {{ total }} 条已上架路线，按阶段循序渐进</p>
+      </div>
     </div>
 
     <div v-if="loadError" class="alert-error" role="alert">
@@ -45,10 +47,10 @@ watch(page, load)
       <button type="button" class="btn btn-sm" @click="load">重新加载</button>
     </div>
 
-    <div v-if="loading" class="grid">
+    <div v-if="loading" class="route-grid">
       <div v-for="i in 3" :key="i" class="skeleton-card" aria-hidden="true" />
     </div>
-    <div v-else-if="items.length" class="grid">
+    <div v-else-if="items.length" class="route-grid">
       <RouteCardItem v-for="route in items" :key="route.id" :route="route" />
     </div>
     <div v-else-if="!loadError" class="skeleton">还没有已上架的学习路线</div>
@@ -67,24 +69,8 @@ watch(page, load)
   flex-direction: column;
   gap: var(--space-md);
 }
-.alert-error {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  border: var(--rule-hair) solid var(--color-error);
-  border-radius: var(--radius-card);
-  background: var(--color-error-wash);
-  font-size: var(--text-sm);
-}
 .alert-error .btn {
   margin-left: auto;
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-sm);
 }
 .skeleton-card {
   min-height: 160px;

@@ -48,6 +48,12 @@ export const useUserStore = defineStore('student-user', () => {
     apply(result)
   }
 
+  /** 重新拉取本人信息（同意协议、修改资料后刷新顶部昵称与待同意状态） */
+  async function refresh() {
+    if (!token.value) return
+    profile.value = await accountApi.me()
+  }
+
   function signOut() {
     return accountApi
       .logout()
@@ -64,5 +70,5 @@ export const useUserStore = defineStore('student-user', () => {
   // 接口层收到 401 时同步清空内存中的登录态（store 为单例，只注册一次）
   window.addEventListener(UNAUTHORIZED_EVENT, reset)
 
-  return { token, profile, isLoggedIn, nickname, restoring, restore, signIn, signOut, reset }
+  return { token, profile, isLoggedIn, nickname, restoring, restore, refresh, signIn, signOut, reset }
 })

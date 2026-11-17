@@ -1,0 +1,34 @@
+/*
+ * 字体：与原型保持一致，但改为本地自托管（public/fonts），不依赖 Fontshare / Google 的 CDN。
+ * 原型用 CDN 引字母型，国内网络下常被墙或超时，会拖慢甚至卡住首屏，因此这里落成本地文件。
+ * - General Sans：正文与标题（仅拉丁字母与数字，中文仍走 PingFang / 微软雅黑）
+ * - Geist Mono：.fig 数字、题号、序号
+ */
+@font-face {
+  font-family: 'General Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/GeneralSans-Regular.woff') format('woff');
+}
+@font-face {
+  font-family: 'General Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/GeneralSans-Medium.woff') format('woff');
+}
+@font-face {
+  font-family: 'General Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/GeneralSans-Semibold.woff') format('woff');
+}
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/geist-mono-400.woff2') format('woff2');
+}

@@ -1,5 +1,7 @@
 package com.yunshuzhixue.modules.content.service;
 
+import com.yunshuzhixue.modules.content.api.CurrentStudentProvider;
+import com.yunshuzhixue.modules.content.api.CourseStateProvider;
 import com.yunshuzhixue.modules.content.api.CourseUsageProvider;
 import com.yunshuzhixue.modules.content.api.RouteDirectory;
 import com.yunshuzhixue.modules.sysconfig.api.SysConfigReader;
@@ -23,11 +25,16 @@ public class RouteDirectoryService implements RouteDirectory {
     private final JdbcTemplate jdbc;
     private final CourseUsageProvider usage;
     private final SysConfigReader configs;
+    private final List<CourseStateProvider> stateProviders;
+    private final CurrentStudentProvider currentStudent;
 
-    public RouteDirectoryService(JdbcTemplate jdbc, CourseUsageProvider usage, SysConfigReader configs) {
+    public RouteDirectoryService(JdbcTemplate jdbc, CourseUsageProvider usage, SysConfigReader configs,
+                                 List<CourseStateProvider> stateProviders, CurrentStudentProvider currentStudent) {
         this.jdbc = jdbc;
         this.usage = usage;
         this.configs = configs;
+        this.stateProviders = stateProviders;
+        this.currentStudent = currentStudent;
     }
 
     @Override
@@ -87,6 +94,7 @@ public class RouteDirectoryService implements RouteDirectory {
         Map<Long, Long> practiceCounts = courseIds.isEmpty() ? Map.of() : usage.onShelfPracticeCounts(courseIds);
         Map<Long, Long> interviewCounts = courseIds.isEmpty() ? Map.of() : usage.onShelfInterviewCounts(courseIds);
         Map<Long, List<String>> subjects = subjectNames(courseIds);
+        Map<Long, CourseStateProvider.State> states = courseStates(courseIds);
         int randomMin = configs.getInt("practice.random_min_question_count");
         int examMin = configs.getInt("exam.min_question_count");
 
@@ -105,10 +113,12 @@ public class RouteDirectoryService implements RouteDirectory {
             long practice = practiceCounts.getOrDefault(courseId, 0L);
             stage.practiceCount += practice;
             stage.interviewCount += interviewCounts.getOrDefault(courseId, 0L);
+            CourseStateProvider.State state = states.getOrDefault(courseId,
+                    new CourseStateProvider.State(false, false));
             stage.courses.add(new CourseItem(courseId, string(row.get("title")),
                     blankToNull(string(row.get("course_intro"))), integer(row.get("duration_minutes")),
                     blankToNull(string(row.get("platform_name"))), subjects.getOrDefault(courseId, List.of()), practice,
-                    false, false));
+                    state.learned(), state.mastered()));
         }
         List<StageDetail> details = stages.values().stream()
                 .map(s -> new StageDetail(s.id, s.name, s.intro, s.practiceCount >= randomMin, s.practiceCount >= examMin,
@@ -154,6 +164,27 @@ public class RouteDirectoryService implements RouteDirectory {
         return new LinkedHashSet<>(jdbc.queryForList("SELECT DISTINCT sc.course_id FROM stage_course sc"
                 + " JOIN course c ON c.id = sc.course_id AND c.status = 'on_shelf'"
                 + " WHERE sc.learning_route_id = ?", Long.class, learningRouteId));
+    }
+
+    /** 可选登录：已登录时通过扩展接口读 M08 的课程状态，游客或未接入实现时全是未学/未掌握 */
+    private Map<Long, CourseStateProvider.State> courseStates(Collection<Long> courseIds) {
+        if (courseIds.isEmpty() || stateProviders.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            Long studentId = currentStudent.currentStudentId();
+            if (studentId == null) {
+                return Map.of();
+            }
+            Map<Long, CourseStateProvider.State> merged = new LinkedHashMap<>();
+            for (CourseStateProvider provider : stateProviders) {
+                merged.putAll(provider.ofStudent(studentId, courseIds));
+            }
+            return merged;
+        } catch (RuntimeException e) {
+            // 非 Web 上下文（定时任务、单元测试等）没有登录态，按游客处理
+            return Map.of();
+        }
     }
 
     private Map<Long, List<String>> subjectNames(Collection<Long> courseIds) {

@@ -38,16 +38,29 @@ public enum ErrorCode {
     SMS_CODE_INVALID(HttpStatus.BAD_REQUEST, "短信验证码不正确或已失效"),
     PHONE_ALREADY_REGISTERED(HttpStatus.CONFLICT, "该手机号已注册"),
     AGREEMENT_VERSION_OUTDATED(HttpStatus.CONFLICT, "协议版本已更新，请重新阅读并同意"),
+    AGREEMENT_CONSENT_REQUIRED(HttpStatus.FORBIDDEN, "需要先同意最新协议"),
     PASSWORD_NOT_SET(HttpStatus.BAD_REQUEST, "尚未设置登录密码"),
     ACCOUNT_BANNED(HttpStatus.FORBIDDEN, "账号已被封禁"),
     STUDENT_CANCELLING(HttpStatus.CONFLICT, "账号处于注销中状态"),
+    CANCELLATION_NOT_PENDING(HttpStatus.CONFLICT, "账号不在注销中"),
     // AI 次数与练习（需求 5.4，S-QTA-01、S-PRC-01~05）
     AI_QUOTA_EXHAUSTED(HttpStatus.CONFLICT, "当日 AI 次数已用完"),
     CONTENT_OFF_SHELF(HttpStatus.CONFLICT, "内容已下架"),
     INSUFFICIENT_QUESTIONS(HttpStatus.CONFLICT, "题目建设中，题量不足"),
-    SESSION_NOT_IN_PROGRESS(HttpStatus.CONFLICT, "该练习场次已结束"),
+    SESSION_NOT_IN_PROGRESS(HttpStatus.CONFLICT, "该场次已结束"),
     QUESTION_NOT_IN_SESSION(HttpStatus.BAD_REQUEST, "该题目不属于本场次"),
     QUESTION_ALREADY_ANSWERED(HttpStatus.CONFLICT, "该题已作答"),
+    COURSE_ALREADY_MASTERED(HttpStatus.CONFLICT, "课程已掌握，不能取消已学标记"),
+    // 模拟考试（需求 5.4.4，S-EXM-01~08）
+    SESSION_IN_PROGRESS(HttpStatus.CONFLICT, "已有进行中的考试，请先继续或结束该场考试"),
+    SESSION_EXPIRED(HttpStatus.CONFLICT, "考试已到截止时间"),
+    SESSION_STATE_INVALID(HttpStatus.CONFLICT, "当前考试状态不允许此操作"),
+    DEVICE_TAKEN_OVER(HttpStatus.CONFLICT, "已在其他设备继续考试"),
+    AI_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "评分服务暂时不可用，请稍后重试"),
+    // AI 面试（需求 5.6，S-IVW-01~08）
+    SESSION_BUSY(HttpStatus.CONFLICT, "上一条回复还在生成中，请稍候"),
+    SENSITIVE_WORD_BLOCKED(HttpStatus.UNPROCESSABLE_ENTITY, "回答包含不适宜内容，请修改后再发送"),
+    WS_TICKET_INVALID(HttpStatus.UNAUTHORIZED, "WebSocket 票据无效或已过期"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "服务器内部错误");
 
     private final HttpStatus status;

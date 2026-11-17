@@ -33,6 +33,13 @@ const pageCount = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE))
 const hasFilter = computed(() => Boolean(current.value.course || current.value.subject
   || current.value.type || current.value.route))
 const redoableCount = computed(() => items.value.filter((item) => item.is_redoable).length)
+const redoableIds = computed(() => items.value.filter((item) => item.is_redoable).map((item) => item.id))
+
+/** 发起错题重做：把当前筛选下的错题记录 ID 带给练习页 */
+function startRedo(ids: number[]) {
+  if (!ids.length) return
+  router.push({ path: '/practice/wrong_redo', query: { ids: ids.join(',') } })
+}
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value : ''
@@ -143,50 +150,77 @@ function timeText(iso: string): string {
 
 <template>
   <div class="wrong">
-    <header class="page-head">
+    <header class="page-head has-actions">
       <div>
         <h1>错题本</h1>
         <p>收录刷题中答错的题目，在这里重做答对后自动移出。</p>
       </div>
-      <button
-        type="button"
-        class="btn btn-primary"
-        disabled
-        title="错题重做依赖练习功能，将在练习模块开发后开放"
-      >
-        重做筛选出的 {{ redoableCount }} 道题
-      </button>
+      <div class="head-actions">
+        <button
+          type="button"
+          class="btn btn-primary"
+          :disabled="redoableCount === 0"
+          :title="redoableCount === 0 ? '当前筛选下没有可重做的错题' : '答对后自动移出错题本'"
+          @click="startRedo(redoableIds)"
+        >
+          重做筛选出的 {{ redoableCount }} 道题
+        </button>
+      </div>
     </header>
 
     <div class="filter-row" role="group" aria-label="筛选错题">
-      <select
-class="input" :value="current.course" aria-label="按课程筛选"
-              @change="applyFilter('course', ($event.target as HTMLSelectElement).value)">
-        <option value="">全部课程</option>
-        <option v-for="course in filters.courses" :key="course.id" :value="String(course.id)">
-          {{ course.title }}
-        </option>
-      </select>
-      <select
-class="input" :value="current.subject" aria-label="按学科筛选"
-              @change="applyFilter('subject', ($event.target as HTMLSelectElement).value)">
-        <option value="">全部学科</option>
-        <option v-for="subject in filters.subjects" :key="subject.id" :value="String(subject.id)">
-          {{ subject.name }}
-        </option>
-      </select>
-      <select
-class="input" :value="current.type" aria-label="按题型筛选"
-              @change="applyFilter('type', ($event.target as HTMLSelectElement).value)">
-        <option value="">全部题型</option>
-        <option v-for="[value, label] in QUESTION_TYPES" :key="value" :value="value">{{ label }}</option>
-      </select>
-      <select
-class="input" :value="current.route" aria-label="按路线筛选"
-              @change="applyFilter('route', ($event.target as HTMLSelectElement).value)">
-        <option value="">全部路线</option>
-        <option v-for="item in filters.routes" :key="item.id" :value="String(item.id)">{{ item.name }}</option>
-      </select>
+      <span class="select-wrap">
+        <select
+          class="select"
+          :class="{ active: current.course }"
+          :value="current.course"
+          aria-label="按课程筛选"
+          @change="applyFilter('course', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">全部课程</option>
+          <option v-for="course in filters.courses" :key="course.id" :value="String(course.id)">
+            {{ course.title }}
+          </option>
+        </select>
+      </span>
+      <span class="select-wrap">
+        <select
+          class="select"
+          :class="{ active: current.subject }"
+          :value="current.subject"
+          aria-label="按学科筛选"
+          @change="applyFilter('subject', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">全部学科</option>
+          <option v-for="subject in filters.subjects" :key="subject.id" :value="String(subject.id)">
+            {{ subject.name }}
+          </option>
+        </select>
+      </span>
+      <span class="select-wrap">
+        <select
+          class="select"
+          :class="{ active: current.type }"
+          :value="current.type"
+          aria-label="按题型筛选"
+          @change="applyFilter('type', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">全部题型</option>
+          <option v-for="[value, label] in QUESTION_TYPES" :key="value" :value="value">{{ label }}</option>
+        </select>
+      </span>
+      <span class="select-wrap">
+        <select
+          class="select"
+          :class="{ active: current.route }"
+          :value="current.route"
+          aria-label="按路线筛选"
+          @change="applyFilter('route', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">全部路线</option>
+          <option v-for="item in filters.routes" :key="item.id" :value="String(item.id)">{{ item.name }}</option>
+        </select>
+      </span>
     </div>
 
     <p v-if="error" class="alert-error" role="alert">{{ error }}</p>
@@ -200,7 +234,7 @@ class="input" :value="current.route" aria-label="按路线筛选"
             <span class="tag">{{ typeLabel(item.question_type) }}</span>
             <span>{{ item.course_title || '课程已删除' }}</span>
             <span v-if="item.subject_names.length" class="muted">{{ item.subject_names.join(' / ') }}</span>
-            <span v-if="!item.is_redoable" class="tag tag-warn">已下架</span>
+            <span v-if="!item.is_redoable" class="tag tag-orange">已下架</span>
             <span class="grow"></span>
             <span class="muted">累计答错 <b class="fig">{{ item.wrong_count }}</b> 次</span>
             <span class="muted fig">{{ timeText(item.last_wrong_at) }}</span>
@@ -237,7 +271,8 @@ class="input" :value="current.route" aria-label="按路线筛选"
               type="button"
               class="btn btn-sm btn-primary"
               :disabled="!item.is_redoable"
-              :title="item.is_redoable ? '错题重做依赖练习功能，将在练习模块开发后开放' : '题目已下架，不能重做'"
+              :title="item.is_redoable ? '答对后自动移出错题本' : '题目已下架，不能重做'"
+              @click="startRedo([item.id])"
             >
               重做
             </button>
@@ -288,26 +323,33 @@ type="button" class="btn btn-sm" :disabled="current.page >= pageCount"
 .page-head {
   align-items: flex-start;
 }
-.filter-row {
+/* 头部操作与筛选各自独立一行，靠左对齐 */
+.head-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
+  justify-content: flex-start;
 }
-.filter-row .input {
-  width: auto;
-  min-width: 9rem;
-  min-height: var(--control-h-sm);
+/* 四个下拉等宽：否则 select 会被最长选项文字撑开，出现宽度参差 */
+.filter-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 200px));
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+@media (max-width: 48rem) {
+  .filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .list {
   display: flex;
   flex-direction: column;
-  padding: 0;
+  padding-block: 0;
 }
 .wrong-item {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-lg);
+  padding: var(--space-lg) 0;
   border-bottom: var(--rule-hair) solid var(--color-rule);
 }
 .wrong-item:last-child {
@@ -411,12 +453,5 @@ type="button" class="btn btn-sm" :disabled="current.page >= pageCount"
   padding: var(--space-2xl) var(--space-lg);
   color: var(--color-muted);
   text-align: center;
-}
-.alert-error {
-  padding: var(--space-2xs) var(--space-sm);
-  border-radius: var(--radius-input);
-  background: var(--color-error-wash);
-  color: var(--color-error);
-  font-size: var(--text-sm);
 }
 </style>

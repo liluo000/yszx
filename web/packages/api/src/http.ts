@@ -42,8 +42,9 @@ export interface HttpClientOptions {
 /** 请求成功时直接返回 data，失败时抛出 ApiError */
 export type HttpClient = {
   get<T>(url: string, params?: Record<string, unknown>): Promise<T>
-  post<T>(url: string, body?: unknown): Promise<T>
-  put<T>(url: string, body?: unknown): Promise<T>
+  /** 自定义请求头用于模拟考试的 X-Device-Claim */
+  post<T>(url: string, body?: unknown, headers?: Record<string, string>): Promise<T>
+  put<T>(url: string, body?: unknown, headers?: Record<string, string>): Promise<T>
   patch<T>(url: string, body?: unknown): Promise<T>
   delete<T>(url: string): Promise<T>
   /** 上传单个文件（multipart，字段名 file） */
@@ -107,8 +108,8 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
 
   return {
     get: (url, params) => unwrap(instance.get(url, { params })),
-    post: (url, body) => unwrap(instance.post(url, body)),
-    put: (url, body) => unwrap(instance.put(url, body)),
+    post: (url, body, headers) => unwrap(instance.post(url, body, { headers })),
+    put: (url, body, headers) => unwrap(instance.put(url, body, { headers })),
     patch: (url, body) => unwrap(instance.patch(url, body)),
     delete: (url) => unwrap(instance.delete(url)),
     upload: (url, file) => {

@@ -47,8 +47,10 @@ watch(() => current.query.q, load)
 <template>
   <section class="page">
     <div class="page-head">
-      <h1>搜索</h1>
-      <p>搜索已上架的学习路线和课程</p>
+      <div>
+        <h1>搜索</h1>
+        <p>搜索已上架的学习路线和课程</p>
+      </div>
     </div>
 
     <form class="search-bar" role="search" @submit.prevent="submit">
@@ -57,16 +59,16 @@ watch(() => current.query.q, load)
     </form>
 
     <div v-if="loadError" class="alert-error" role="alert">{{ loadError }}</div>
-    <div v-else-if="!loading && !String(current.query.q ?? '').trim()" class="skeleton">
+    <div v-else-if="!loading && !String(current.query.q ?? '').trim()" class="empty">
       输入关键词后显示匹配的学习路线和课程
     </div>
     <div v-else-if="loading" class="skeleton">正在搜索…</div>
     <template v-else-if="result">
-      <div v-if="!hasResult" class="skeleton">没有匹配的学习路线或课程，换个关键词试试</div>
+      <div v-if="!hasResult" class="empty">没有匹配的学习路线或课程，换个关键词试试</div>
       <template v-else>
         <section v-if="result.routes.length" class="group">
           <h2>路线 <span class="fig">{{ result.routes.length }}</span></h2>
-          <div class="grid">
+          <div class="route-grid">
             <RouteCardItem v-for="route in result.routes" :key="route.id" :route="route" />
           </div>
         </section>
@@ -108,13 +110,6 @@ watch(() => current.query.q, load)
   gap: var(--space-xs);
   max-width: 560px;
 }
-.alert-error {
-  padding: var(--space-sm) var(--space-md);
-  border: var(--rule-hair) solid var(--color-error);
-  border-radius: var(--radius-card);
-  background: var(--color-error-wash);
-  font-size: var(--text-sm);
-}
 .group {
   display: flex;
   flex-direction: column;
@@ -128,11 +123,6 @@ watch(() => current.query.q, load)
   margin-left: var(--space-2xs);
   color: var(--color-muted);
   font-weight: 400;
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-sm);
 }
 .courses {
   display: flex;

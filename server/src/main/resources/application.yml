@@ -30,6 +30,15 @@ logging:
     level: "%5p [%X{requestId:-}]"
 
 yunshu:
+  # AI 能力厂商适配（架构 T05）：凭证为空时自动回退 M14 本地占位实现，离线可运行
+  ai:
+    dashscope:
+      # 阿里云百炼 API Key，线上由环境变量注入；本地不配置即走占位
+      api-key: ${DASHSCOPE_API_KEY:}
+      model: ${DASHSCOPE_MODEL:qwen-plus}
+      temperature: 0.7
+      max-tokens: 1024
+      timeout-seconds: 30
   admin:
     # 初始超级管理员：仅当系统中没有任何后台账号时，启动时创建一次，首次登录必须修改密码
     init:

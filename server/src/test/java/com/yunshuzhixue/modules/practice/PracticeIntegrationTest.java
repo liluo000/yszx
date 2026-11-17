@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -187,6 +188,128 @@ class PracticeIntegrationTest {
     @Test
     void anonymousIsRejected() throws Exception {
         mvc.perform(get("/api/v1/student/practice-records")).andExpect(status().isUnauthorized());
+    }
+
+    /** S-PRC-01 random：按阶段抽题、写 planned_question_ids，重复发起把旧轮标记未完成 */
+    @Test
+    void randomPracticeDrawsQuestionsFromStage() throws Exception {
+        Map<String, Object> stage = jdbc.queryForMap("SELECT rs.learning_route_id AS route_id, rs.id AS stage_id"
+                + " FROM route_stage rs JOIN stage_course sc ON sc.route_stage_id = rs.id"
+                + " JOIN practice_question q ON q.course_id = sc.course_id AND q.status = 'on_shelf'"
+                + " JOIN learning_route r ON r.id = rs.learning_route_id AND r.status = 'on_shelf'"
+                + " GROUP BY rs.id, rs.learning_route_id"
+                + " HAVING COUNT(DISTINCT q.id) >= 5 ORDER BY rs.id LIMIT 1");
+        long routeId = ((Number) stage.get("route_id")).longValue();
+        long stageId = ((Number) stage.get("stage_id")).longValue();
+        String body = "{\"practice_mode\":\"random\",\"learning_route_id\":" + routeId
+                + ",\"route_stage_id\":" + stageId + "}";
+
+        MvcResult first = mvc.perform(post("/api/v1/student/practice-sessions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.practice_mode").value("random"))
+                .andExpect(jsonPath("$.data.next_question").isNotEmpty())
+                .andReturn();
+        String firstJson = first.getResponse().getContentAsString();
+        long firstSession = ((Number) JsonPath.read(firstJson, "$.data.id")).longValue();
+        int count = ((Number) JsonPath.read(firstJson, "$.data.question_count")).intValue();
+        assertThat(count).isBetween(5, 10);
+        assertThat(jdbc.queryForObject("SELECT planned_question_ids FROM practice_session WHERE id = ?",
+                String.class, firstSession)).isNotBlank();
+
+        // 进度接口同样按 planned ids 返回下一题
+        long firstQuestion = ((Number) JsonPath.read(firstJson, "$.data.next_question.id")).longValue();
+        mvc.perform(get("/api/v1/student/practice-sessions/" + firstSession)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.next_question.id").value(firstQuestion));
+        mvc.perform(post("/api/v1/student/practice-sessions/" + firstSession + "/answers")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(answerBody(firstQuestion, "[\"Z\"]")))
+                .andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/student/practice-sessions/" + firstSession)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.answered_count").value(1));
+
+        // 再次发起：旧轮 unfinished，新轮 in_progress
+        MvcResult second = mvc.perform(post("/api/v1/student/practice-sessions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn();
+        long secondSession = ((Number) JsonPath.read(second.getResponse().getContentAsString(),
+                "$.data.id")).longValue();
+        assertThat(secondSession).isNotEqualTo(firstSession);
+        assertThat(jdbc.queryForObject("SELECT status FROM practice_session WHERE id = ?", String.class,
+                firstSession)).isEqualTo("unfinished");
+
+        // 阶段不属于路线时 404
+        mvc.perform(post("/api/v1/student/practice-sessions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"practice_mode\":\"random\",\"learning_route_id\":" + routeId
+                                + ",\"route_stage_id\":99999999}"))
+                .andExpect(status().isNotFound());
+    }
+
+    /** 需求 5.5 错题重做：按错题记录 ID 发起，答对后移出错题本，且不进入刷题记录 */
+    @Test
+    void wrongRedoRemovesQuestionWhenAnsweredCorrectly() throws Exception {
+        // 先答错一题，产生错题记录
+        MvcResult started = start(false);
+        String body = started.getResponse().getContentAsString();
+        long sessionId = ((Number) JsonPath.read(body, "$.data.id")).longValue();
+        long questionId = ((Number) JsonPath.read(body, "$.data.next_question.id")).longValue();
+        mvc.perform(post("/api/v1/student/practice-sessions/" + sessionId + "/answers")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(answerBody(questionId, "[\"Z\"]")))
+                .andExpect(status().isCreated());
+        Long recordId = jdbc.queryForObject(
+                "SELECT id FROM wrong_question WHERE student_id = ? AND practice_question_id = ?",
+                Long.class, studentId, questionId);
+        long sequentialTotal = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM practice_session WHERE student_id = ? AND practice_mode = 'sequential'",
+                Long.class, studentId);
+
+        // 用错题记录 ID 发起重做
+        MvcResult redo = mvc.perform(post("/api/v1/student/practice-sessions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"practice_mode\":\"wrong_redo\",\"wrong_question_ids\":[" + recordId + "]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.practice_mode").value("wrong_redo"))
+                .andExpect(jsonPath("$.data.question_count").value(1))
+                .andExpect(jsonPath("$.data.next_question.id").value(questionId))
+                .andReturn();
+
+        long redoSession = ((Number) JsonPath.read(redo.getResponse().getContentAsString(),
+                "$.data.id")).longValue();
+        String correct = jdbc.queryForObject("SELECT correct_answer FROM practice_question WHERE id = ?",
+                String.class, questionId);
+        mvc.perform(post("/api/v1/student/practice-sessions/" + redoSession + "/answers")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(answerBody(questionId, correct)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.result.is_correct").value(true))
+                .andExpect(jsonPath("$.data.session_status").value("completed"))
+                .andExpect(jsonPath("$.data.next_question").doesNotExist());
+
+        // 答对后移出错题本；错题重做轮次不进入刷题记录
+        assertThat(wrongCount(questionId)).isZero();
+        mvc.perform(get("/api/v1/student/wrong-questions").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.total").value(0));
+        mvc.perform(get("/api/v1/student/practice-records").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.total").value(sequentialTotal));
+
+        // 再次重做同一记录应 404（已移出）
+        mvc.perform(post("/api/v1/student/practice-sessions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"practice_mode\":\"wrong_redo\",\"wrong_question_ids\":[" + recordId + "]}"))
+                .andExpect(status().isNotFound());
     }
 
     private void submitWrong(long sessionId, long questionId) throws Exception {

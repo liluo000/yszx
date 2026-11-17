@@ -26,7 +26,8 @@ const password = ref('')
 const agreed = ref(false)
 const submitting = ref(false)
 const error = ref('')
-const hint = ref('')
+// 个人中心改密码/换绑手机号后会作废全部会话，跳回登录页并带上提示
+const hint = ref(typeof route.query.notice === 'string' ? route.query.notice : '')
 const agreementOpen = ref<StudentAgreementType | null>(null)
 
 const {
@@ -126,10 +127,57 @@ async function onSubmit() {
   }
 }
 
-/** 忘记密码：项目暂未做密码重置页，引导用验证码登录后在个人中心处理 */
+/** 忘记密码：用 S-ACC-06 走短信验证码重置密码 */
 function onForgot() {
-  switchMode('sms')
-  hint.value = '可先用验证码登录，再到个人中心设置或重置密码'
+  resetError.value = ''
+  resetPhone.value = PHONE_RE.test(phone.value) ? phone.value : ''
+  resetCode.value = ''
+  resetPasswordValue.value = ''
+  resetConfirm.value = ''
+  resetSms.refreshCaptcha()
+  resetOpen.value = true
+}
+
+const resetOpen = ref(false)
+const resetPhone = ref('')
+const resetCode = ref('')
+const resetPasswordValue = ref('')
+const resetConfirm = ref('')
+const resetError = ref('')
+const resetBusy = ref(false)
+const resetSms = useSmsCode('reset_password')
+
+async function submitReset() {
+  resetError.value = ''
+  if (!PHONE_RE.test(resetPhone.value)) {
+    resetError.value = '请输入正确的手机号'
+    return
+  }
+  if (resetPasswordValue.value.length < 6 || resetPasswordValue.value.length > 20) {
+    resetError.value = '密码长度需要 6~20 位'
+    return
+  }
+  if (resetPasswordValue.value !== resetConfirm.value) {
+    resetError.value = '两次输入的密码不一致'
+    return
+  }
+  resetBusy.value = true
+  try {
+    await accountApi.resetPassword({
+      phone: resetPhone.value,
+      sms_code: resetCode.value.trim(),
+      new_password: resetPasswordValue.value,
+    })
+    resetOpen.value = false
+    switchMode('password')
+    phone.value = resetPhone.value
+    password.value = ''
+    hint.value = '密码已重置，请用新密码登录'
+  } catch (e) {
+    resetError.value = errorText(e, '重置失败，请稍后重试')
+  } finally {
+    resetBusy.value = false
+  }
 }
 
 function onAgreementClick(type: StudentAgreementType) {
@@ -265,5 +313,114 @@ function onAgreementClick(type: StudentAgreementType) {
       :state="agreementStates[agreementOpen]"
       @close="agreementOpen = null"
     />
+
+    <!-- 忘记密码：短信验证码重置 -->
+    <div
+      v-if="resetOpen"
+      class="mask"
+      role="dialog"
+      aria-modal="true"
+      aria-label="重置密码"
+      @click.self="resetOpen = false"
+    >
+      <div class="dialog card">
+        <header class="dialog-head">
+          <h2>重置密码</h2>
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="关闭" @click="resetOpen = false">✕</button>
+        </header>
+        <p class="muted tip">通过手机号验证码重置，重置后所有设备需重新登录。</p>
+        <div class="field">
+          <label class="field-label" for="reset-phone">手机号</label>
+          <input id="reset-phone" v-model="resetPhone" class="input" maxlength="11" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="reset-code">短信验证码</label>
+          <div class="sms-row">
+            <input id="reset-code" v-model="resetCode" class="input" maxlength="6" />
+            <button
+              type="button"
+              class="btn btn-sm"
+              :disabled="resetSms.sending.value || resetSms.countdown.value > 0"
+              @click="resetSms.send(resetPhone)"
+            >
+              {{ resetSms.countdown.value > 0 ? `${resetSms.countdown.value}s` : '获取验证码' }}
+            </button>
+          </div>
+          <div class="captcha-row">
+            <input v-model="resetSms.captchaCode.value" class="input" maxlength="8" placeholder="图形验证码" />
+            <img
+              v-if="resetSms.captchaImage.value"
+              class="captcha"
+              :src="resetSms.captchaImage.value"
+              alt="图形验证码，点击刷新"
+              @click="resetSms.refreshCaptcha()"
+            />
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="reset-pwd">新密码</label>
+          <input id="reset-pwd" v-model="resetPasswordValue" class="input" type="password" autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="reset-pwd2">确认新密码</label>
+          <input id="reset-pwd2" v-model="resetConfirm" class="input" type="password" autocomplete="new-password" />
+        </div>
+        <p v-if="resetError" class="dialog-error" role="alert">{{ resetError }}</p>
+        <footer class="dialog-foot">
+          <button type="button" class="btn" @click="resetOpen = false">取消</button>
+          <button type="button" class="btn btn-primary" :disabled="resetBusy" @click="submitReset">
+            {{ resetBusy ? '提交中…' : '确认重置' }}
+          </button>
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.tip {
+  font-size: var(--text-sm);
+}
+
+.dialog-error {
+  color: var(--color-error);
+  font-size: var(--text-sm);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.field-label {
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+}
+
+.sms-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.sms-row .btn {
+  flex: none;
+}
+
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-2xs);
+}
+
+.captcha {
+  flex: none;
+  height: var(--control-h);
+  border: var(--rule-hair) solid var(--color-rule-2);
+  border-radius: var(--radius-input);
+  cursor: pointer;
+}
+
+</style>

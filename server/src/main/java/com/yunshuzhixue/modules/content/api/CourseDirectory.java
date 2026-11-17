@@ -15,8 +15,15 @@ public interface CourseDirectory {
     record SubjectRef(Long id, String name) {
     }
 
+    /** 课程视频：S-LRN-01 打开课程时返回，链接不放在 CourseItem 里（需求 5.3.3） */
+    record CourseVideo(Long id, String videoUrl, String platformName, String status) {
+    }
+
     /** 按 ID 批量查询，不存在的不返回 */
     Map<Long, CourseRef> find(Collection<Long> courseIds);
+
+    /** 课程视频链接与平台，课程不存在时返回 null */
+    CourseVideo video(Long courseId);
 
     /** 课程所属学科，按课程内排序号升序；没有学科的课程不返回 */
     Map<Long, List<SubjectRef>> subjectsOf(Collection<Long> courseIds);

@@ -6,16 +6,21 @@ import com.yunshuzhixue.common.error.BusinessException;
 import com.yunshuzhixue.common.error.ErrorCode;
 import com.yunshuzhixue.common.time.BeijingDates;
 import com.yunshuzhixue.modules.content.api.CourseDirectory;
+import com.yunshuzhixue.modules.content.api.RouteDirectory;
 import com.yunshuzhixue.modules.content.api.CourseDirectory.CourseRef;
 import com.yunshuzhixue.modules.practice.api.AnswerCompletedEvent;
+import com.yunshuzhixue.modules.practice.api.WrongQuestionDirectory;
 import com.yunshuzhixue.modules.question.api.PracticeQuestionDirectory;
 import com.yunshuzhixue.modules.question.api.PracticeQuestionDirectory.QuestionDetail;
 import com.yunshuzhixue.modules.quota.api.AiQuotaApi;
+import com.yunshuzhixue.modules.sysconfig.api.SysConfigReader;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +41,8 @@ import tools.jackson.databind.json.JsonMapper;
 public class PracticeService {
 
     private static final String SEQUENTIAL = "sequential";
+    private static final String WRONG_REDO = "wrong_redo";
+    private static final String RANDOM = "random";
     private static final String IN_PROGRESS = "in_progress";
     private static final String COMPLETED = "completed";
     private static final String ON_SHELF = "on_shelf";
@@ -43,25 +50,39 @@ public class PracticeService {
     private final JdbcTemplate jdbc;
     private final PracticeQuestionDirectory questions;
     private final CourseDirectory courses;
+    private final RouteDirectory routes;
+    private final SysConfigReader configs;
     private final AiQuotaApi quota;
+    private final WrongQuestionDirectory wrongQuestions;
     private final ApplicationEventPublisher events;
     private final JsonMapper json;
 
     public PracticeService(JdbcTemplate jdbc, PracticeQuestionDirectory questions, CourseDirectory courses,
-                           AiQuotaApi quota, ApplicationEventPublisher events, JsonMapper json) {
+                           RouteDirectory routes, SysConfigReader configs, AiQuotaApi quota,
+                           WrongQuestionDirectory wrongQuestions,
+                           ApplicationEventPublisher events, JsonMapper json) {
         this.jdbc = jdbc;
         this.questions = questions;
         this.courses = courses;
+        this.routes = routes;
+        this.configs = configs;
         this.quota = quota;
+        this.wrongQuestions = wrongQuestions;
         this.events = events;
         this.json = json;
     }
 
-    /** S-PRC-01：开始或继续课程顺序练习 */
+    /** S-PRC-01：开始或继续练习（sequential 顺序练习、wrong_redo 错题重做） */
     @Transactional
     public PracticeSessionView start(long studentId, StartRequest request) {
+        if (WRONG_REDO.equals(request.practiceMode())) {
+            return startWrongRedo(studentId, request);
+        }
+        if (RANDOM.equals(request.practiceMode())) {
+            return startRandom(studentId, request);
+        }
         if (!SEQUENTIAL.equals(request.practiceMode())) {
-            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "本批只支持按课程顺序练习");
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "练习模式暂不支持");
         }
         Long courseId = request.courseId();
         if (courseId == null) {
@@ -102,9 +123,98 @@ public class PracticeService {
     /** S-PRC-02：练习进度与下一题 */
     public PracticeSessionView view(long studentId, long sessionId) {
         Map<String, Object> row = sessionRow(studentId, sessionId);
+        return buildView(studentId, row, sessionQuestionIds(row));
+    }
+
+    /** 顺序练习按课程取题；随机抽题 / 错题重做按 planned_question_ids 取题 */
+    private List<Long> sessionQuestionIds(Map<String, Object> row) {
+        String mode = String.valueOf(row.get("practice_mode"));
+        if (RANDOM.equals(mode) || WRONG_REDO.equals(mode)) {
+            return plannedIds(row.get("planned_question_ids"));
+        }
         Long courseId = number(row.get("course_id"));
-        List<Long> ids = courseId == null ? List.of() : questions.questionIdsOfCourse(courseId);
-        return buildView(studentId, row, ids);
+        return courseId == null ? List.of() : questions.questionIdsOfCourse(courseId);
+    }
+
+    /** S-PRC-01 random：按阶段抽题，题量不足按实际抽取，低于最低题量拒绝 */
+    private PracticeSessionView startRandom(long studentId, StartRequest request) {
+        Long routeId = request.learningRouteId();
+        Long stageId = request.routeStageId();
+        if (routeId == null || stageId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "请选择要抽题的路线和阶段");
+        }
+        RouteDirectory.RouteDetail detail = routes.routeDetail(routeId);
+        if (detail == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "学习路线不存在或已下架");
+        }
+        RouteDirectory.StageDetail stage = detail.stages().stream()
+                .filter(one -> one.id() == stageId).findFirst().orElse(null);
+        if (stage == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "阶段不属于该路线");
+        }
+        List<Long> pool = new ArrayList<>();
+        for (RouteDirectory.CourseItem course : stage.courses()) {
+            pool.addAll(questions.questionIdsOfCourse(course.id()));
+        }
+        int wanted = configs.getInt("practice.random_question_count");
+        int minimum = configs.getInt("practice.random_min_question_count");
+        if (pool.size() < minimum) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_QUESTIONS,
+                    "本阶段题目不足 " + minimum + " 道，暂时无法随机抽题");
+        }
+        Collections.shuffle(pool);
+        List<Long> ids = pool.subList(0, Math.min(wanted, pool.size())).stream().distinct().toList();
+
+        jdbc.update("UPDATE practice_session SET status = 'unfinished', finished_at = NOW(3)"
+                + " WHERE student_id = ? AND practice_mode = 'random' AND status = 'in_progress'", studentId);
+        jdbc.update("INSERT INTO practice_session"
+                        + " (student_id, practice_mode, learning_route_id, route_stage_id, route_name, stage_name,"
+                        + " planned_question_ids, status, question_count, started_at)"
+                        + " VALUES (?, 'random', ?, ?, ?, ?, ?, 'in_progress', ?, NOW(3))",
+                studentId, routeId, stageId, detail.name(), stage.name(),
+                json.writeValueAsString(ids), ids.size());
+        long sessionId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        return buildView(studentId, sessionRow(studentId, sessionId), ids);
+    }
+
+    /** S-PRC-01 wrong_redo：错题记录 ID → 题目 ID，已下架的题不能重做（需求 5.5） */
+    private PracticeSessionView startWrongRedo(long studentId, StartRequest request) {
+        List<Long> recordIds = request.wrongQuestionIds();
+        if (recordIds == null || recordIds.isEmpty() || recordIds.size() > 200) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "请选择 1~200 道要重做的错题");
+        }
+        Map<Long, Long> mapped = wrongQuestions.questionIdsOf(studentId, recordIds);
+        if (mapped.size() < new HashSet<>(recordIds).size()) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "部分错题记录不存在或已移出");
+        }
+        // 保持传入顺序，并过滤已下架的题
+        List<Long> ids = new ArrayList<>();
+        Set<Long> seen = new HashSet<>();
+        Map<Long, QuestionDetail> details = questions.details(new ArrayList<>(new LinkedHashSet<>(mapped.values())));
+        for (Long recordId : recordIds) {
+            Long questionId = mapped.get(recordId);
+            if (questionId == null || !seen.add(questionId)) {
+                continue;
+            }
+            QuestionDetail detail = details.get(questionId);
+            if (detail != null && ON_SHELF.equals(detail.status())) {
+                ids.add(questionId);
+            }
+        }
+        if (ids.isEmpty()) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_QUESTIONS, "错题对应的题目已下架，不能重做");
+        }
+        List<Long> active = jdbc.queryForList("SELECT id FROM practice_session WHERE student_id = ?"
+                + " AND practice_mode = 'wrong_redo' AND status = 'in_progress'", Long.class, studentId);
+        for (Long oldId : active) {
+            jdbc.update("UPDATE practice_session SET status = 'unfinished', finished_at = NOW(3) WHERE id = ?", oldId);
+        }
+        jdbc.update("INSERT INTO practice_session"
+                        + " (student_id, practice_mode, planned_question_ids, status, question_count, started_at)"
+                        + " VALUES (?, 'wrong_redo', ?, 'in_progress', ?, NOW(3))",
+                studentId, json.writeValueAsString(ids), ids.size());
+        long sessionId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        return buildView(studentId, sessionRow(studentId, sessionId), ids);
     }
 
     /** S-PRC-03：提交一题答案，立即返回判分结果 */
@@ -114,9 +224,12 @@ public class PracticeService {
         if (!IN_PROGRESS.equals(session.get("status"))) {
             throw new BusinessException(ErrorCode.SESSION_NOT_IN_PROGRESS);
         }
+        String mode = String.valueOf(session.get("practice_mode"));
         Long courseId = number(session.get("course_id"));
         Long questionId = request.practiceQuestionId();
-        List<Long> ids = courseId == null ? List.of() : questions.questionIdsOfCourse(courseId);
+        List<Long> ids = RANDOM.equals(mode) || WRONG_REDO.equals(mode)
+                ? plannedIds(session.get("planned_question_ids"))
+                : courseId == null ? List.of() : questions.questionIdsOfCourse(courseId);
         if (questionId == null || !ids.contains(questionId)) {
             throw new BusinessException(ErrorCode.QUESTION_NOT_IN_SESSION);
         }
@@ -154,18 +267,22 @@ public class PracticeService {
 
         String snapshot = json.writeValueAsString(snapshotOf(detail));
         String answerJson = json.writeValueAsString(request.studentAnswer());
+        // 错题重做轮次没有 course_id，落到作答行与事件里的是题目所属课程
+        Long answerCourseId = courseId != null ? courseId : detail.courseId();
         jdbc.update("INSERT INTO practice_answer (practice_session_id, student_id, practice_question_id,"
                         + " course_id, practice_mode, question_type, question_snapshot, student_answer,"
-                        + " judge_method, is_correct, answered_at) VALUES (?, ?, ?, ?, 'sequential', ?, ?, ?, ?, ?, NOW(3))",
-                sessionId, studentId, questionId, courseId, detail.questionType(), snapshot, answerJson,
+                        + " judge_method, is_correct, answered_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3))",
+                sessionId, studentId, questionId, answerCourseId, mode, detail.questionType(), snapshot, answerJson,
                 judgeMethod, correct ? 1 : 0);
 
         jdbc.update("UPDATE practice_session SET answered_count = answered_count + 1,"
                 + " correct_count = correct_count + ? WHERE id = ?", correct ? 1 : 0, sessionId);
-        jdbc.update("INSERT INTO sequential_question_result"
+        if (SEQUENTIAL.equals(mode)) {
+            jdbc.update("INSERT INTO sequential_question_result"
                 + " (student_id, practice_question_id, course_id, is_correct, answered_at) VALUES (?, ?, ?, ?, NOW(3))"
                 + " ON DUPLICATE KEY UPDATE is_correct = VALUES(is_correct), answered_at = VALUES(answered_at)",
-                studentId, questionId, courseId, correct ? 1 : 0);
+                    studentId, questionId, courseId, correct ? 1 : 0);
+        }
 
         answered.add(questionId);
         boolean finished = answered.containsAll(ids);
@@ -173,8 +290,8 @@ public class PracticeService {
             jdbc.update("UPDATE practice_session SET status = 'completed', finished_at = NOW(3) WHERE id = ?",
                     sessionId);
         }
-        events.publishEvent(new AnswerCompletedEvent(studentId, questionId, courseId, detail.questionType(),
-                request.studentAnswer(), correct, SEQUENTIAL));
+        events.publishEvent(new AnswerCompletedEvent(studentId, questionId, answerCourseId, detail.questionType(),
+                request.studentAnswer(), correct, mode));
 
         AnswerResult result = new AnswerResult(correct, judgeMethod, aiScore, aiComment,
                 shortAnswer ? null : detail.correctAnswer(), detail.referenceAnswer(), detail.analysis());
@@ -307,6 +424,21 @@ public class PracticeService {
             out.add(String.valueOf(value));
         }
         return out;
+    }
+
+    /** 解析 planned_question_ids（随机抽题、错题重做的题目列表） */
+    private List<Long> plannedIds(Object raw) {
+        if (raw == null || String.valueOf(raw).isBlank() || "null".equals(raw)) {
+            return List.of();
+        }
+        try {
+            JsonNode node = json.readTree(String.valueOf(raw));
+            List<Long> ids = new ArrayList<>();
+            node.forEach(child -> ids.add(child.asLong()));
+            return ids;
+        } catch (RuntimeException e) {
+            return List.of();
+        }
     }
 
     private Object parse(String raw) {

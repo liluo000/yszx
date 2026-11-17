@@ -69,6 +69,86 @@ public class AiQuotaService implements AiQuotaApi {
         return true;
     }
 
+    @Override
+    @Transactional
+    public boolean reserveScoring(long studentId, long examSessionId) {
+        LocalDate today = LocalDate.now(BeijingDates.ZONE);
+        ensureRow(studentId, today);
+        int inserted = jdbc.update("INSERT IGNORE INTO ai_quota_ledger"
+                        + " (student_id, quota_date, quota_type, action, business_type, business_id)"
+                        + " VALUES (?, ?, 'scoring', 'reserve', 'exam_session', ?)",
+                studentId, today, examSessionId);
+        if (inserted == 0) {
+            return true;
+        }
+        int limit = configs.getInt("ai.scoring_daily_limit");
+        int updated = jdbc.update("UPDATE ai_quota_daily SET scoring_reserved = scoring_reserved + 1"
+                        + " WHERE student_id = ? AND quota_date = ?"
+                        + " AND scoring_used + scoring_reserved < ?", studentId, today, limit);
+        if (updated == 0) {
+            jdbc.update("DELETE FROM ai_quota_ledger WHERE business_type = 'exam_session'"
+                    + " AND business_id = ? AND quota_type = 'scoring' AND action = 'reserve'", examSessionId);
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public void releaseScoring(long studentId, long examSessionId) {
+        LocalDate today = LocalDate.now(BeijingDates.ZONE);
+        ensureRow(studentId, today);
+        int removed = jdbc.update("DELETE FROM ai_quota_ledger WHERE business_type = 'exam_session'"
+                + " AND business_id = ? AND quota_type = 'scoring' AND action = 'reserve'", examSessionId);
+        if (removed > 0) {
+            jdbc.update("UPDATE ai_quota_daily SET scoring_reserved = GREATEST(scoring_reserved - 1, 0)"
+                    + " WHERE student_id = ? AND quota_date = ?", studentId, today);
+            jdbc.update("INSERT IGNORE INTO ai_quota_ledger"
+                    + " (student_id, quota_date, quota_type, action, business_type, business_id)"
+                    + " VALUES (?, ?, 'scoring', 'release', 'exam_session', ?)",
+                    studentId, today, examSessionId);
+        }
+    }
+
+    @Override
+    @Transactional
+    public boolean consumeReservedScoring(long studentId, long examSessionId) {
+        LocalDate today = LocalDate.now(BeijingDates.ZONE);
+        Integer reserved = jdbc.queryForObject("SELECT COUNT(*) FROM ai_quota_ledger"
+                + " WHERE business_type = 'exam_session' AND business_id = ?"
+                + " AND quota_type = 'scoring' AND action = 'reserve'", Integer.class, examSessionId);
+        if (reserved != null && reserved > 0) {
+            jdbc.update("DELETE FROM ai_quota_ledger WHERE business_type = 'exam_session'"
+                    + " AND business_id = ? AND quota_type = 'scoring' AND action = 'reserve'", examSessionId);
+            jdbc.update("UPDATE ai_quota_daily SET scoring_reserved = GREATEST(scoring_reserved - 1, 0)"
+                    + " WHERE student_id = ? AND quota_date = ?", studentId, today);
+        }
+        boolean charged = charge(studentId, "scoring", "exam_session", examSessionId);
+        if (charged) {
+            jdbc.update("INSERT IGNORE INTO ai_quota_ledger"
+                    + " (student_id, quota_date, quota_type, action, business_type, business_id)"
+                    + " VALUES (?, ?, 'scoring', 'consume', 'exam_session', ?)",
+                    studentId, today, examSessionId);
+        }
+        return charged;
+    }
+
+    @Override
+    @Transactional
+    public void refundInterview(long studentId, LocalDate quotaDate, long interviewSessionId) {
+        int removed = jdbc.update("DELETE FROM ai_quota_ledger WHERE business_type = 'interview_session'"
+                + " AND business_id = ? AND quota_type = 'interview' AND action = 'charge'", interviewSessionId);
+        if (removed == 0) {
+            return;
+        }
+        jdbc.update("UPDATE ai_quota_daily SET interview_used = GREATEST(interview_used - 1, 0)"
+                + " WHERE student_id = ? AND quota_date = ?", studentId, quotaDate);
+        jdbc.update("INSERT IGNORE INTO ai_quota_ledger"
+                + " (student_id, quota_date, quota_type, action, business_type, business_id)"
+                + " VALUES (?, ?, 'interview', 'refund', 'interview_session', ?)",
+                studentId, quotaDate, interviewSessionId);
+    }
+
     private void ensureRow(long studentId, LocalDate date) {
         jdbc.update("INSERT IGNORE INTO ai_quota_daily (student_id, quota_date) VALUES (?, ?)", studentId, date);
     }

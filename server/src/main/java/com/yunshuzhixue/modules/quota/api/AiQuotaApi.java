@@ -20,4 +20,19 @@ public interface AiQuotaApi {
      * 次数不足时返回 false 且不产生流水；同一业务重复调用返回 true（幂等）。
      */
     boolean charge(long studentId, String quotaType, String businessType, long businessId);
+
+    /** 模拟考试开考时预留 1 次简答题评分次数；次数不足返回 false（同一场次幂等） */
+    boolean reserveScoring(long studentId, long examSessionId);
+
+    /** 主动放弃或评分失败时释放预留次数（未预留过则无操作） */
+    void releaseScoring(long studentId, long examSessionId);
+
+    /** 交卷评分成功后把预留转为正式扣减；返回 false 表示次数不足 */
+    boolean consumeReservedScoring(long studentId, long examSessionId);
+
+    /**
+     * 退还一次面试次数（AI 服务异常结束面试时使用，需求 8.6）。
+     * 次数归属开始当天，因此要按当时的 quotaDate 回退；同一业务重复调用无副作用。
+     */
+    void refundInterview(long studentId, java.time.LocalDate quotaDate, long interviewSessionId);
 }

@@ -5,6 +5,7 @@ import com.yunshuzhixue.modules.account.api.StudentDirectory;
 import com.yunshuzhixue.modules.account.entity.Student;
 import com.yunshuzhixue.modules.account.mapper.StudentMapper;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -27,5 +28,12 @@ public class StudentDirectoryService implements StudentDirectory {
         return mapper.selectList(new LambdaQueryWrapper<Student>()
                         .select(Student::getId, Student::getNickname).in(Student::getId, studentIds))
                 .stream().collect(Collectors.toMap(Student::getId, Student::getNickname));
+    }
+
+    @Override
+    public List<Long> activeStudentIds() {
+        return mapper.selectList(new LambdaQueryWrapper<Student>()
+                        .select(Student::getId).ne(Student::getStatus, "banned"))
+                .stream().map(Student::getId).toList();
     }
 }

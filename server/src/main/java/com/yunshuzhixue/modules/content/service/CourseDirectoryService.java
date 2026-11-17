@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -24,12 +25,14 @@ public class CourseDirectoryService implements CourseDirectory {
     private final CourseMapper courseMapper;
     private final CourseSubjectMapper courseSubjectMapper;
     private final SubjectMapper subjectMapper;
+    private final JdbcTemplate jdbc;
 
     public CourseDirectoryService(CourseMapper courseMapper, CourseSubjectMapper courseSubjectMapper,
-                                  SubjectMapper subjectMapper) {
+                                  SubjectMapper subjectMapper, JdbcTemplate jdbc) {
         this.courseMapper = courseMapper;
         this.courseSubjectMapper = courseSubjectMapper;
         this.subjectMapper = subjectMapper;
+        this.jdbc = jdbc;
     }
 
     @Override
@@ -39,6 +42,19 @@ public class CourseDirectoryService implements CourseDirectory {
         }
         return courseMapper.selectByIds(courseIds).stream().map(CourseDirectoryService::ref)
                 .collect(Collectors.toMap(CourseRef::id, Function.identity()));
+    }
+
+    @Override
+    public CourseVideo video(Long courseId) {
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT c.id, c.video_url, c.status,"
+                + " p.name AS platform_name FROM course c"
+                + " LEFT JOIN video_platform p ON p.id = c.video_platform_id WHERE c.id = ?", courseId);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        Map<String, Object> row = rows.get(0);
+        return new CourseVideo(((Number) row.get("id")).longValue(), (String) row.get("video_url"),
+                (String) row.get("platform_name"), (String) row.get("status"));
     }
 
     @Override

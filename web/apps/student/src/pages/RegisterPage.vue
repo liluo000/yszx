@@ -205,4 +205,5 @@ function onAgreementClick(type: StudentAgreementType) {
 .note {
   font-size: var(--text-xs);
 }
+
 </style>

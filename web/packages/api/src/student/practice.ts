@@ -44,9 +44,15 @@ export interface PracticeSessionView {
 }
 
 export interface StartPracticeRequest {
-  practice_mode: 'sequential'
-  course_id: number
+  practice_mode: 'sequential' | 'wrong_redo' | 'random'
+  /** sequential 必填 */
+  course_id?: number
   restart?: boolean
+  /** wrong_redo 必填：错题记录 ID，1~200 项 */
+  wrong_question_ids?: number[]
+  /** random 必填 */
+  learning_route_id?: number
+  route_stage_id?: number
 }
 
 export interface SubmitAnswerRequest {

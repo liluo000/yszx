@@ -32,36 +32,10 @@ const emit = defineEmits<{ close: [] }>()
 </template>
 
 <style scoped>
-.mask {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: grid;
-  place-items: center;
-  padding: var(--space-md);
-  background: rgba(10, 28, 49, 0.45);
-}
-.dialog {
-  width: min(34rem, 100%);
-  max-height: min(80vh, 40rem);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  background: var(--color-paper);
-}
-.dialog-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-}
-.dialog-head h2 {
-  font-size: var(--text-md);
-  font-weight: 600;
-}
 .version {
   font-size: var(--text-xs);
 }
+
 .content {
   overflow-y: auto;
   white-space: pre-wrap;
@@ -69,13 +43,10 @@ const emit = defineEmits<{ close: [] }>()
   line-height: 1.8;
   color: var(--color-ink-2);
 }
+
 .empty {
   padding: var(--space-xl) 0;
   text-align: center;
   font-size: var(--text-sm);
-}
-.dialog-foot {
-  display: flex;
-  justify-content: flex-end;
 }
 </style>

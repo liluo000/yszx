@@ -11,17 +11,23 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
-/** 学员账号（S-ACC-01~05、07）：公开接口与需登录接口按方法区分 */
+/** 学员账号（S-ACC-01~13）：公开接口与需登录接口按方法区分 */
 @RestController
 @RequestMapping("/api/v1/student")
 public class StudentAccountController {
@@ -83,6 +89,55 @@ public class StudentAccountController {
         return ApiResponse.ok();
     }
 
+    @PostMapping("/password-resets")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        accounts.resetPassword(request.phone(), request.smsCode(), request.newPassword());
+        return ApiResponse.ok();
+    }
+
+    @PatchMapping("/me")
+    public ApiResponse<StudentProfile> updateMe(@RequestBody Map<String, Object> body) {
+        StudentStp.LOGIC.checkLogin();
+        return ApiResponse.ok(accounts.updateProfile(body));
+    }
+
+    @PostMapping("/me/avatar")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<AvatarResponse> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        StudentStp.LOGIC.checkLogin();
+        return ApiResponse.ok(new AvatarResponse(accounts.updateAvatar(file)));
+    }
+
+    @PutMapping("/me/password")
+    public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        StudentStp.LOGIC.checkLogin();
+        accounts.changePassword(request.oldPassword(), request.smsCode(), request.newPassword());
+        return ApiResponse.ok();
+    }
+
+    @PutMapping("/me/phone")
+    public ApiResponse<Void> changePhone(@Valid @RequestBody ChangePhoneRequest request) {
+        StudentStp.LOGIC.checkLogin();
+        accounts.changePhone(request.newPhone(), request.newSmsCode(), request.oldSmsCode(), request.password());
+        return ApiResponse.ok();
+    }
+
+    @PostMapping("/me/cancellation")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<CancellationResponse> requestCancellation(
+            @Valid @RequestBody CancellationRequest request) {
+        StudentStp.LOGIC.checkLogin();
+        Instant effectiveAt = accounts.requestCancellation(request.smsCode(), request.confirmed());
+        return ApiResponse.ok(new CancellationResponse(effectiveAt));
+    }
+
+    @DeleteMapping("/me/cancellation")
+    public ApiResponse<StudentProfile> cancelCancellation() {
+        StudentStp.LOGIC.checkLogin();
+        return ApiResponse.ok(accounts.cancelCancellation());
+    }
+
     private static LoginResponse toResponse(LoginResult result) {
         return new LoginResponse(result.token(), result.isNewStudent(), result.profile());
     }
@@ -112,5 +167,31 @@ public class StudentAccountController {
     }
 
     public record LoginResponse(String token, boolean isNewStudent, StudentProfile profile) {
+    }
+
+    public record ResetPasswordRequest(@NotBlank @Pattern(regexp = PHONE) String phone,
+                                       @NotBlank @Pattern(regexp = "^[0-9]{6}$") String smsCode,
+                                       @NotBlank @Size(min = 6, max = 20) String newPassword) {
+    }
+
+    public record ChangePasswordRequest(@Size(min = 6, max = 20) String oldPassword,
+                                        @Pattern(regexp = "^[0-9]{6}$") String smsCode,
+                                        @NotBlank @Size(min = 6, max = 20) String newPassword) {
+    }
+
+    public record ChangePhoneRequest(@NotBlank @Pattern(regexp = PHONE) String newPhone,
+                                     @NotBlank @Pattern(regexp = "^[0-9]{6}$") String newSmsCode,
+                                     @Pattern(regexp = "^[0-9]{6}$") String oldSmsCode,
+                                     @Size(min = 6, max = 20) String password) {
+    }
+
+    public record CancellationRequest(@NotBlank @Pattern(regexp = "^[0-9]{6}$") String smsCode,
+                                      boolean confirmed) {
+    }
+
+    public record CancellationResponse(Instant cancellationEffectiveAt) {
+    }
+
+    public record AvatarResponse(String avatarUrl) {
     }
 }

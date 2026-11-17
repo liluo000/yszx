@@ -1,15 +1,7 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import StudentLayout from '@/layout/StudentLayout.vue'
 import HomePage from '@/pages/HomePage.vue'
-import PlaceholderPage from '@/pages/PlaceholderPage.vue'
 import { useUserStore } from '@/stores/user'
-
-/** 页面框架占位：路由与标题先接通，功能开发时把 component 换成对应页面 */
-const page = (path: string, title: string, requiresAuth = false): RouteRecordRaw => ({
-  path,
-  component: PlaceholderPage,
-  meta: { title, requiresAuth },
-})
 
 const routes: RouteRecordRaw[] = [
   {
@@ -22,16 +14,17 @@ const routes: RouteRecordRaw[] = [
       { path: 'search', component: () => import('@/pages/SearchPage.vue'), meta: { title: '搜索' } },
       { path: 'login', component: () => import('@/pages/LoginPage.vue'), meta: { title: '登录' } },
       { path: 'register', component: () => import('@/pages/RegisterPage.vue'), meta: { title: '注册' } },
+      { path: 'practice/wrong_redo', component: () => import('@/pages/PracticePage.vue'), meta: { title: '错题重做', requiresAuth: true } },
       { path: 'practice/:mode/:key', component: () => import('@/pages/PracticePage.vue'), meta: { title: '顺序练习', requiresAuth: true } },
-      page('exam/:sid', '模拟考试', true),
+      { path: 'exam/:sid', component: () => import('@/pages/ExamPage.vue'), meta: { title: '模拟考试', requiresAuth: true } },
       { path: 'wrong', component: () => import('@/pages/WrongBookPage.vue'), meta: { title: '错题本', requiresAuth: true } },
-      page('interview', 'AI 面试', true),
-      page('interviews', '面试记录', true),
-      page('report/:id(\\d+)', '面试报告', true),
+      { path: 'interview', component: () => import('@/pages/InterviewPage.vue'), meta: { title: 'AI 面试', requiresAuth: true } },
+      { path: 'interviews', component: () => import('@/pages/InterviewsPage.vue'), meta: { title: '面试记录', requiresAuth: true } },
+      { path: 'report/:id(\\d+)', component: () => import('@/pages/InterviewReportPage.vue'), meta: { title: '面试报告', requiresAuth: true } },
       { path: 'records', component: () => import('@/pages/RecordsPage.vue'), meta: { title: '学习记录', requiresAuth: true } },
-      page('profile', '个人中心', true),
-      page('messages', '消息中心', true),
-      page('help', '帮助中心'),
+      { path: 'profile', component: () => import('@/pages/ProfilePage.vue'), meta: { title: '个人中心', requiresAuth: true } },
+      { path: 'messages', component: () => import('@/pages/MessagesPage.vue'), meta: { title: '消息中心', requiresAuth: true } },
+      { path: 'help', component: () => import('@/pages/HelpPage.vue'), meta: { title: '帮助中心' } },
       { path: ':pathMatch(.*)*', redirect: '/' },
     ],
   },

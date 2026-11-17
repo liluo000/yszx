@@ -1,10 +1,13 @@
 <script setup lang="ts">
-// 首页（需求 5.2，S-PTL-01）：游客显示产品介绍与全部路线，登录后显示个人学习区块
+// 首页（需求 5.2，S-PTL-01）
+// 游客：产品介绍 + 全部路线；登录：欢迎标题 → 继续学习与数据卡两栏 → 我的路线进度 → 全部路线
 import { computed, onMounted, ref } from 'vue'
 import type { HomeView } from '@yunshu/api'
-import { errorText, homeApi } from '@/api'
+import { errorText, homeApi, isConsentRequired } from '@/api'
 import RouteCardItem from '@/components/RouteCard.vue'
+import { useUserStore } from '@/stores/user'
 
+const user = useUserStore()
 const home = ref<HomeView | null>(null)
 const loading = ref(false)
 const loadError = ref('')
@@ -15,6 +18,9 @@ const myRoutes = computed(() => home.value?.my_routes ?? [])
 const continueLearning = computed(() => home.value?.continue_learning ?? null)
 const pendingWrong = computed(() => home.value?.pending_wrong_question_count ?? 0)
 const interviewRemaining = computed(() => home.value?.interview_remaining ?? 0)
+const greetingName = computed(() => user.nickname || '同学')
+/** 游客首屏右侧展示的路线（取第一条已上架路线） */
+const leadRoute = computed(() => routes.value[0] ?? null)
 
 async function load() {
   loading.value = true
@@ -22,10 +28,21 @@ async function load() {
   try {
     home.value = await homeApi.load()
   } catch (e) {
-    loadError.value = errorText(e, '首页加载失败，请稍后重试')
+    // 未同意最新协议时由全局弹窗处理，这里不再叠加错误条
+    if (!isConsentRequired(e)) loadError.value = errorText(e, '首页加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
+}
+
+function continuePath(courseId: number) {
+  const item = continueLearning.value
+  return item ? `/route/${item.learning_route_id}?course=${courseId}` : '/routes'
+}
+
+/** 进度条比例（0~1），用于 --p 变量 */
+function ratio(done: number, total: number) {
+  return total > 0 ? Math.min(1, done / total).toFixed(3) : 0
 }
 
 onMounted(load)
@@ -38,91 +55,179 @@ onMounted(load)
       <button type="button" class="btn btn-sm" @click="load">重新加载</button>
     </div>
 
-    <!-- 产品介绍：游客可见 -->
-    <section v-if="isGuest" class="hero">
-      <div class="hero-copy">
-        <h1>从课程到 AI 面试，一条路线学到底</h1>
-        <p class="lead">按学习路线系统学习，刷题检验，模拟考试，AI 面试复盘，把「学过」变成「掌握」。</p>
-        <div class="actions">
-          <RouterLink to="/login" class="btn btn-primary">免费注册</RouterLink>
-          <RouterLink to="/routes" class="btn">浏览学习路线</RouterLink>
+    <!-- 产品介绍：游客可见（原型：墨色板 + 一张路线卡预览） -->
+    <section v-if="home && isGuest" class="board">
+      <div>
+        <h1>学完一个阶段，就面一次</h1>
+        <p>按路线看课、刷题，再用文字或语音和 AI 面试官过一遍，报告按阶段指出短板。</p>
+        <div class="row wrap">
+          <RouterLink to="/login" class="btn btn-lg">免费注册</RouterLink>
+          <RouterLink to="/routes" class="btn btn-ghost btn-lg">浏览学习路线</RouterLink>
         </div>
       </div>
-      <ul class="features">
-        <li>
-          <b>按路线学</b>
-          <span>阶段清晰，进度可见</span>
-        </li>
-        <li>
-          <b>刷题与考试</b>
-          <span>判分即时，错题沉淀</span>
-        </li>
-        <li>
-          <b>AI 面试</b>
-          <span>文字或语音，生成报告</span>
-        </li>
-      </ul>
+      <article v-if="leadRoute" class="card route-preview">
+        <div class="row-between">
+          <h3>{{ leadRoute.name }}</h3>
+          <span class="small muted">{{ leadRoute.stages.length }} 个阶段</span>
+        </div>
+        <ol>
+          <li v-for="stage in leadRoute.stages.slice(0, 5)" :key="stage.id">
+            <span>{{ stage.name }}</span>
+            <span class="fig">{{ stage.course_count }} 门</span>
+          </li>
+        </ol>
+        <div class="row-between small">
+          <span class="muted">课程看完，刷题正确率达到 70%</span>
+          <span class="stamp">已掌握</span>
+        </div>
+      </article>
     </section>
 
-    <!-- 已登录：个性化区块 -->
+    <dl v-if="home && isGuest" class="features">
+      <div>
+        <dt>学习路线</dt>
+        <dd>多个方向按阶段编排视频课程，从任意阶段开始。</dd>
+      </div>
+      <div>
+        <dt>刷题练习</dt>
+        <dd>判断、单选、多选、简答四种题型，错题自动沉淀。</dd>
+      </div>
+      <div>
+        <dt>AI 面试</dt>
+        <dd>文字或语音实时对话，结束后生成分阶段的面试报告。</dd>
+      </div>
+    </dl>
+
+    <!-- 已登录：欢迎标题 + 两栏（继续学习 / 数据卡） -->
     <template v-if="!isGuest && !loading">
-      <section class="section">
-        <div class="section-head">
-          <h2>继续学习</h2>
-          <RouterLink to="/records">学习记录</RouterLink>
+      <header class="page-head">
+        <div>
+          <h1>{{ greetingName }}，继续上次的课程</h1>
+          <p v-if="continueLearning">{{ continueLearning.route_name }}，{{ continueLearning.stage_name }}</p>
+          <p v-else>还没有学习记录，先从一条学习路线开始</p>
         </div>
-        <RouterLink v-if="continueLearning" :to="`/route/${continueLearning.learning_route_id}`" class="card continue">
-          <span class="muted">{{ continueLearning.route_name }}</span>
-          <b>{{ continueLearning.course_title }}</b>
-          <span class="muted">{{ continueLearning.stage_name }} · 继续学习 ›</span>
-        </RouterLink>
-        <div v-else class="skeleton">还没有学习记录，先从一条学习路线开始</div>
-      </section>
+      </header>
 
-      <section class="section">
-        <div class="section-head">
-          <h2>我的路线进度</h2>
-          <span class="muted">已学与已掌握进度</span>
+      <div class="home-top">
+        <article v-if="continueLearning" class="card continue">
+          <div class="row-between wrap">
+            <h2>{{ continueLearning.course_title }}</h2>
+            <div class="row">
+              <span v-if="continueLearning.is_mastered" class="stamp">已掌握</span>
+              <span v-else-if="continueLearning.is_learned" class="tag tag-primary">已学</span>
+              <span v-else class="tag">未学</span>
+              <RouterLink :to="continuePath(continueLearning.course_id)" class="btn btn-primary">
+                继续学习
+              </RouterLink>
+            </div>
+          </div>
+
+          <div class="mt-16">
+            <div class="progress-label">
+              <span>{{ continueLearning.route_name }} 已学进度</span>
+              <span class="fig">
+                {{ continueLearning.progress.learned_course_count }}/{{ continueLearning.progress.total_course_count }}
+              </span>
+            </div>
+            <div
+              class="progress"
+              role="progressbar"
+              aria-label="路线已学进度"
+              aria-valuemin="0"
+              :aria-valuemax="continueLearning.progress.total_course_count"
+              :aria-valuenow="continueLearning.progress.learned_course_count"
+            >
+              <span :style="{ '--p': ratio(continueLearning.progress.learned_course_count, continueLearning.progress.total_course_count) }" />
+            </div>
+          </div>
+
+          <div class="ledger">
+            <RouterLink
+              v-for="(course, index) in continueLearning.stage_courses"
+              :key="course.id"
+              class="ledger-row"
+              :class="{ current: course.id === continueLearning.course_id }"
+              :to="continuePath(course.id)"
+            >
+              <span class="no">{{ String(index + 1).padStart(2, '0') }}</span>
+              <span class="grow">{{ course.title }}</span>
+              <span v-if="course.is_mastered" class="stamp">已掌握</span>
+              <span v-else-if="course.is_learned" class="tag tag-primary">已学</span>
+              <span v-else class="tag">未学</span>
+            </RouterLink>
+          </div>
+        </article>
+
+        <div v-else class="card empty-continue">
+          <p>还没有学习记录</p>
+          <span class="muted">从一条路线开始，打开第一门课程后这里会显示进度</span>
+          <RouterLink to="/routes" class="btn btn-primary">浏览学习路线</RouterLink>
         </div>
-        <ul v-if="myRoutes.length" class="my-routes">
-          <li v-for="route in myRoutes" :key="route.id">
-            <RouterLink :to="`/route/${route.id}`">{{ route.name }}</RouterLink>
-            <span v-if="route.progress" class="fig">
-              已学 {{ route.progress.learned_course_count }}/{{ route.progress.total_course_count }} · 已掌握
-              {{ route.progress.mastered_course_count }}
-            </span>
-          </li>
-        </ul>
-        <div v-else class="skeleton">还没有开始学习任何路线</div>
-      </section>
 
-      <div class="stats">
-        <RouterLink to="/wrong" class="card stat">
-          <span class="muted">待重做错题</span>
-          <b class="fig">{{ pendingWrong }}</b>
-          <span class="muted">去错题本 ›</span>
-        </RouterLink>
-        <RouterLink to="/interview" class="card stat">
-          <span class="muted">今日 AI 面试剩余次数</span>
-          <b class="fig">{{ interviewRemaining }}</b>
-          <span class="muted">去面试 ›</span>
-        </RouterLink>
+        <div class="stat-col">
+          <RouterLink to="/wrong" class="stat-tile">
+            <span class="label">待重做的错题</span>
+            <span class="value">{{ pendingWrong }}<small>道</small></span>
+          </RouterLink>
+          <RouterLink to="/interview" class="stat-tile">
+            <span class="label">今日 AI 面试剩余</span>
+            <span class="value">{{ interviewRemaining }}<small>次</small></span>
+            <span class="small muted">北京时间 0 点重置</span>
+          </RouterLink>
+        </div>
       </div>
     </template>
 
-    <!-- 全部学习路线 -->
-    <section class="section">
+    <!-- 我的路线进度：已学 / 已掌握双进度条 -->
+    <section v-if="!isGuest && !loading">
+      <div class="section-head">
+        <h2>我的路线进度</h2>
+        <RouterLink to="/records">学习记录</RouterLink>
+      </div>
+      <div v-if="myRoutes.length" class="route-grid">
+        <RouterLink v-for="route in myRoutes" :key="route.id" :to="`/route/${route.id}`" class="card hoverable my-route">
+          <div class="row-between mb-12">
+            <h3>{{ route.name }}</h3>
+            <span class="small muted">{{ route.stages.length }} 个阶段</span>
+          </div>
+          <div class="col">
+            <div>
+              <div class="progress-label">
+                <span>已学进度</span>
+                <span class="fig">{{ route.progress?.learned_course_count ?? 0 }}/{{ route.progress?.total_course_count ?? 0 }}</span>
+              </div>
+              <div class="progress">
+                <span :style="{ '--p': ratio(route.progress?.learned_course_count ?? 0, route.progress?.total_course_count ?? 0) }" />
+              </div>
+            </div>
+            <div>
+              <div class="progress-label">
+                <span>已掌握进度</span>
+                <span class="fig">{{ route.progress?.mastered_course_count ?? 0 }}/{{ route.progress?.configured_course_count ?? 0 }}</span>
+              </div>
+              <div class="progress teal">
+                <span :style="{ '--p': ratio(route.progress?.mastered_course_count ?? 0, route.progress?.configured_course_count ?? 0) }" />
+              </div>
+            </div>
+          </div>
+        </RouterLink>
+      </div>
+      <div v-else class="empty">还没有开始学习任何路线</div>
+    </section>
+
+    <!-- 全部学习路线：游客与登录都显示 -->
+    <section>
       <div class="section-head">
         <h2>全部学习路线</h2>
         <RouterLink to="/routes">查看全部</RouterLink>
       </div>
-      <div v-if="loading" class="route-grid">
+      <div v-if="loading || !home" class="route-grid">
         <div v-for="i in 3" :key="i" class="route-skeleton" aria-hidden="true" />
       </div>
       <div v-else-if="routes.length" class="route-grid">
         <RouteCardItem v-for="route in routes" :key="route.id" :route="route" />
       </div>
-      <div v-else class="skeleton">还没有已上架的学习路线</div>
+      <div v-else class="empty">还没有已上架的学习路线</div>
     </section>
   </div>
 </template>
@@ -131,205 +236,140 @@ onMounted(load)
 .home {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2xl);
 }
-.alert-error {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  border: var(--rule-hair) solid var(--color-error);
-  border-radius: var(--radius-card);
-  background: var(--color-error-wash);
-  color: var(--color-ink);
-  font-size: var(--text-sm);
-}
-.alert-error .btn {
-  margin-left: auto;
-}
-.hero {
+
+/* ===== 游客首屏：墨色板 + 路线卡预览 ===== */
+.board {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
   gap: var(--space-xl);
-  padding: var(--space-xl) 0 var(--space-lg);
-  border-bottom: var(--rule-hair) solid var(--color-rule);
+  align-items: center;
+  padding: var(--space-2xl) var(--space-xl);
+  border-radius: 12px;
+  background: var(--color-board);
+  color: var(--color-board-type);
 }
-.hero-copy h1 {
-  max-width: 18ch;
+.board h1 {
+  max-width: 14ch;
+  color: var(--color-board-type);
   font-size: var(--text-3xl);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
+  line-height: 1.15;
 }
-.lead {
+.board p {
   max-width: 46ch;
-  margin-top: var(--space-md);
-  color: var(--color-muted);
+  margin-top: var(--space-sm);
+  color: var(--color-board-type);
+  font-size: var(--text-md);
+  opacity: 0.82;
+}
+.board .row {
+  margin-top: var(--space-lg);
+}
+.board .btn-ghost {
+  color: var(--color-board-type);
+}
+.board .btn-ghost:hover {
+  background: var(--color-ink-2);
+  color: var(--color-board-type);
+}
+.board .card {
+  transform: rotate(-1deg);
+  box-shadow: var(--edge-stock), 12px 10px 24px -10px oklch(var(--deep) / 0.6);
+}
+.route-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  color: var(--color-ink);
+}
+.route-preview h3 {
   font-size: var(--text-lg);
 }
-.actions {
+.route-preview ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+.route-preview ol li {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin-top: var(--space-lg);
+  justify-content: space-between;
+  gap: var(--space-xs);
+  padding: var(--space-2xs) 0;
+  border-top: var(--rule-hair) solid var(--color-rule);
 }
 .features {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--space-sm);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-lg);
+  margin: var(--space-xl) 0 0;
 }
-.features li {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3xs);
-  padding: var(--space-md);
-  border: var(--rule-hair) solid var(--color-rule);
-  border-radius: var(--radius-card);
-  background: var(--color-cotton);
+.features div {
+  padding-top: var(--space-sm);
+  border-top: var(--rule-hair) solid var(--color-rule-2);
 }
-.features b {
-  font-size: var(--text-sm);
-}
-.features span {
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-}
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-.section-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-sm);
-}
-.section-head h2 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-}
-.section-head span,
-.section-head a {
-  font-size: var(--text-xs);
-}
-.section-head a {
-  margin-left: auto;
-}
-.continue {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
-  text-decoration: none;
-  color: var(--color-ink);
-}
-.continue:hover {
-  text-decoration: none;
-  border-color: var(--color-accent);
-}
-.continue b {
-  font-size: var(--text-lg);
-}
-.muted {
-  font-size: var(--text-sm);
-}
-.my-routes {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.my-routes li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  border: var(--rule-hair) solid var(--color-rule);
-  border-radius: var(--radius-card);
-  background: var(--color-cotton);
-  font-size: var(--text-sm);
-}
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-sm);
-}
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
-  text-decoration: none;
-  color: var(--color-ink);
-}
-.stat:hover {
-  text-decoration: none;
-  border-color: var(--color-accent);
-}
-.stat b {
-  font-size: var(--text-2xl);
-  font-weight: 600;
-}
-.route-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-sm);
-}
-.route-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-lg);
-  border: var(--rule-hair) solid var(--color-rule);
-  border-radius: var(--radius-card);
-  background: var(--color-cotton);
-  color: var(--color-ink);
-  text-decoration: none;
-  transition: border-color var(--dur-short), box-shadow var(--dur-short);
-}
-.route-card:hover {
-  text-decoration: none;
-  border-color: var(--color-accent);
-  box-shadow: var(--cast-stock);
-}
-.route-card h3 {
+.features dt {
   font-size: var(--text-md);
   font-weight: 600;
 }
-.route-card .intro {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  font-size: var(--text-xs);
+.features dd {
+  margin: var(--space-2xs) 0 0;
+  color: var(--color-ink-2);
 }
-.stages {
+
+/* ===== 已登录 ===== */
+.continue {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3xs);
-  margin: var(--space-2xs) 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--text-xs);
 }
-.stages li {
+.empty-continue {
   display: flex;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-2xs) 0;
-  border-top: var(--rule-hair) solid var(--color-rule);
-  color: var(--color-muted);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+.empty-continue p {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.empty-continue .btn {
+  margin-top: var(--space-2xs);
+}
+.my-route {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.my-route:hover {
+  text-decoration: none;
+}
+.my-route h3 {
+  font-size: var(--text-md);
 }
 .route-skeleton {
   min-height: 132px;
-  border: 1px dashed var(--color-rule-2);
   border-radius: var(--radius-card);
   background: linear-gradient(180deg, var(--color-paper-2), var(--color-cotton));
+  box-shadow: var(--edge-stock);
+}
+
+@media (max-width: 60rem) {
+  .board {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-xl) var(--space-lg);
+  }
+  .features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 40rem) {
+  .board h1 {
+    font-size: var(--text-2xl);
+  }
+  .features {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>
